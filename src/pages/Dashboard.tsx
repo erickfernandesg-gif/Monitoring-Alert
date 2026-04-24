@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import Sidebar from "../components/Sidebar";
-import { fetchGovAlerts, ExternalAlert } from "../services/dataService";
+import { fetchGovAlerts, fetchPressNews, ExternalAlert, NewsArticle } from "../services/dataService";
 import { useNavigate } from "react-router-dom";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { PageTransition } from "../components/PageTransition";
 import { MapContainer, TileLayer, Circle, Popup } from "react-leaflet";
@@ -23,6 +23,8 @@ import {
 
 export default function Dashboard() {
   const [alerts, setAlerts] = useState<ExternalAlert[]>([]);
+  const [news, setNews] = useState<NewsArticle[]>([]);
+  const [isLoadingNews, setIsLoadingNews] = useState(true);
   const [radarTimestamp, setRadarTimestamp] = useState<number | null>(null);
   const navigate = useNavigate();
 
@@ -33,6 +35,15 @@ export default function Dashboard() {
     }
     loadData();
     const interval = setInterval(loadData, 60000); // refresh every minute
+
+    async function loadNews() {
+      setIsLoadingNews(true);
+      const newsData = await fetchPressNews();
+      setNews(newsData);
+      setIsLoadingNews(false);
+    }
+    loadNews();
+    const newsInterval = setInterval(loadNews, 300000); // refresh news every 5 minutes
 
     async function loadRadar() {
       try {
@@ -53,6 +64,7 @@ export default function Dashboard() {
     
     return () => {
       clearInterval(interval);
+      clearInterval(newsInterval);
       clearInterval(radarInterval);
     };
   }, []);
@@ -274,23 +286,33 @@ export default function Dashboard() {
                   <h2 className="font-data-mono text-data-mono text-on-surface uppercase tracking-wider">Radar de Imprensa</h2>
                 </div>
               </div>
-              <div className="flex-1 p-4 flex flex-col gap-4">
-                <div className="pb-4 border-b border-surface-container-highest last:border-0 last:pb-0">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="bg-surface-container-highest text-inverse-surface font-label-caps text-label-caps px-2 py-0.5 rounded">G1 SC</span>
-                    <span className="font-label-caps text-label-caps text-outline">Há 1 hora</span>
+              <div className="flex-1 p-4 flex flex-col gap-4 overflow-y-auto">
+                {isLoadingNews ? (
+                  <div className="flex-1 flex items-center justify-center text-on-surface-variant font-data-mono">
+                    <span className="animate-pulse">Buscando notícias...</span>
                   </div>
-                  <h3 className="font-data-mono text-[14px] text-on-surface hover:text-primary transition-colors cursor-pointer mb-1 leading-tight">Defesa Civil eleva nível de alerta para chuvas extremas no Vale do Itajaí</h3>
-                  <p className="text-xs text-on-surface-variant line-clamp-2">Previsão indica volumes acima de 150mm para as próximas 24 horas. Abrigos já estão sendo preparados pelas prefeituras locais.</p>
-                </div>
-                <div className="pb-4 border-b border-surface-container-highest last:border-0 last:pb-0">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="bg-surface-container-highest text-inverse-surface font-label-caps text-label-caps px-2 py-0.5 rounded">Folha PR</span>
-                    <span className="font-label-caps text-label-caps text-outline">Há 3 horas</span>
+                ) : news.length === 0 ? (
+                  <div className="flex-1 flex items-center justify-center text-on-surface-variant font-data-mono text-center">
+                    Nenhuma notícia crítica no momento.
                   </div>
-                  <h3 className="font-data-mono text-[14px] text-on-surface hover:text-primary transition-colors cursor-pointer mb-1 leading-tight">Ciclone extratropical afasta-se da costa, mas ventos fortes persistem</h3>
-                  <p className="text-xs text-on-surface-variant line-clamp-2">Apesar do afastamento do sistema meteorológico, rajadas continuam causando transtornos pontuais na rede elétrica da capital paranaense.</p>
-                </div>
+                ) : (
+                  news.map((item) => (
+                    <div key={item.id} className="pb-4 border-b border-surface-container-highest last:border-0 last:pb-0 hover:bg-surface/50 p-2 rounded transition-colors group">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="bg-surface-container-highest text-inverse-surface font-label-caps text-label-caps px-2 py-0.5 rounded">{item.source}</span>
+                        <span className="font-label-caps text-label-caps text-outline">
+                          {format(new Date(item.pubDate.replace(" ", "T")), "dd/MM/yyyy HH:mm")}
+                        </span>
+                      </div>
+                      <h3 className="font-data-mono text-[14px] text-on-surface group-hover:text-primary transition-colors cursor-pointer mb-2 leading-tight">
+                        {item.title}
+                      </h3>
+                      <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-primary hover:underline uppercase tracking-wider">
+                        Ler matéria →
+                      </a>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
 

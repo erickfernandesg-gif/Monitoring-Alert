@@ -1,5 +1,35 @@
 import { v4 as uuidv4 } from "uuid";
 
+export interface NewsArticle {
+  id: string;
+  title: string;
+  link: string;
+  pubDate: string;
+  source: string;
+}
+
+export async function fetchPressNews(): Promise<NewsArticle[]> {
+  try {
+    const url = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent('https://news.google.com/rss/search?q=desastres+naturais+Brasil+OR+chuvas+enchentes+OR+defesa+civil&hl=pt-BR&gl=BR&ceid=BR:pt-419')}`;
+    const response = await fetch(url);
+    if (!response.ok) return [];
+    
+    const data = await response.json();
+    if (!data.items || !Array.isArray(data.items)) return [];
+    
+    return data.items.slice(0, 10).map((item: any) => ({
+      id: uuidv4(),
+      title: item.title,
+      link: item.link,
+      pubDate: item.pubDate,
+      source: "Google News",
+    }));
+  } catch (error) {
+    console.error("Falha ao buscar notícias do Radar de Imprensa:", error);
+    return [];
+  }
+}
+
 export interface ExternalAlert {
   externalId: string;
   source: "INMET" | "CEMADEN" | "DEFESA_CIVIL" | "NASA_FIRMS" | "ANA";
