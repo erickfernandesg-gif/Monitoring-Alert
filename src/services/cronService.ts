@@ -19,34 +19,35 @@ export async function runCronJob() {
     return { status: "no_critical_alerts" };
   }
 
-  // 3. Get active monitoring zones
-  const { data: zones } = await supabaseAdmin
-    .from("monitoring_zones")
-    .select("state, city")
-    .eq("active", true);
-
-  const activeZones = zones || [];
-  
-  // (In a real app, we would match strictly. For demo, we might just process all critical ones 
-  // if activeZones is empty to show functionality, but let's stick to the rules)
-
   const processedAlerts = [];
 
   for (const alert of criticalAlerts) {
-    // Priorização do Padrão IBGE para evitar falhas com acentuação ou strings divergentes nas APIs
-    const isMonitored = activeZones.length === 0 || activeZones.some((z: any) => {
-      // Comparação rigorosa pelo código do IBGE (7 dígitos)
-      if (z.ibgeCode && alert.ibgeCode && String(z.ibgeCode) === String(alert.ibgeCode)) return true;
-      if (z.codigo_ibge && alert.ibgeCode && String(z.codigo_ibge) === String(alert.ibgeCode)) return true;
-      
-      // Fallback para string match
-      return z.state === alert.state || z.city === alert.city;
-    });
-    
-    if (!isMonitored) {
-      console.log(`[Pular] Alerta fora da zona de monitoramento ativa: ${alert.city}/${alert.state}`);
+    if (!alert.latitude || !alert.longitude || !alert.radiusKm) {
+        console.log(`[Pular] Alerta sem coordenadas válidas: ${alert.externalId}`);
+        continue;
+    }
+
+    // Usando RPC PostGIS para encontrar zonas dentro da área de perigo
+    const { data: zonesInRadius, error: rpcError } = await supabaseAdmin.rpc(
+      "get_zones_in_radius",
+      {
+        alert_lat: alert.latitude,
+        alert_lon: alert.longitude,
+        radius_km: alert.radiusKm,
+      }
+    );
+
+    if (rpcError) {
+      console.error(`Falha ao checar interseção PostGIS para alerta ${alert.externalId}:`, rpcError);
       continue;
     }
+
+    if (!zonesInRadius || zonesInRadius.length === 0) {
+      console.log(`[Pular] Alerta ${alert.city}/${alert.state} não afeta nenhuma zona monitorada ativa.`);
+      continue;
+    }
+
+    console.log(`📍 ALERTA GEO LOCALIZADO: Interseção com ${zonesInRadius.length} zonas ativas para evento em ${alert.city}.`);
 
     // 🔬 PRECISÃO: Verificamos limiares críticos locais
     const isWindHazard = alert.windSpeedExpected && alert.windSpeedExpected > 80;

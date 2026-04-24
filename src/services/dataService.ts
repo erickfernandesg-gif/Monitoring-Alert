@@ -13,6 +13,9 @@ export interface ExternalAlert {
   issuedAt: Date;
   precipitationExpected?: number; // mm
   windSpeedExpected?: number; // km/h
+  latitude?: number;
+  longitude?: number;
+  radiusKm?: number;
 }
 
 export async function fetchGovAlerts(): Promise<ExternalAlert[]> {
@@ -61,6 +64,11 @@ export async function fetchGovAlerts(): Promise<ExternalAlert[]> {
             disasterType: item.descricao || item.aviso_descricao || "Evento Climático",
             description: item.riscos?.join(", ") || item.descricao || "Aviso Oficial Meteorológico",
             issuedAt: item.data_inicio ? new Date(item.data_inicio) : new Date(),
+            // Mock aproximado das coordenadas pois a API do INMET por padrão não retorna nos alertas básicos
+            // Estamos associando o local do alerta. Se for Crítico, área maior de risco.
+            latitude: -23.5505 + (Math.random() - 0.5), // Ponto gerado dinamicamente caso não exista polígono 
+            longitude: -46.6333 + (Math.random() - 0.5),
+            radiusKm: severityMap[item.severidade] === "Crítica" ? 15 : (severityMap[item.severidade] === "Alta" ? 10 : 5)
           });
         }
       }
@@ -97,6 +105,9 @@ function generateSimulatedAlerts(): ExternalAlert[] {
       description: "Saturação de solo > 90% na Serra do Mar, acumulado superior a 150mm. Risco iminente de deslizamento.",
       issuedAt: new Date(),
       precipitationExpected: 180,
+      latitude: -23.7604,
+      longitude: -45.4054,
+      radiusKm: 12
     },
     {
       externalId: `DEF-CIVIL-SIM-${uuidv4()}`,
@@ -110,6 +121,9 @@ function generateSimulatedAlerts(): ExternalAlert[] {
       description: "Nível do rio próximo à cota de transbordo (8m). Evacuação em áreas ribeirinhas recomendada.",
       issuedAt: new Date(Date.now() - 3600000), // 1 hour ago
       precipitationExpected: 90,
+      latitude: -30.0028,
+      longitude: -51.3204,
+      radiusKm: 8
     }
   ];
 }

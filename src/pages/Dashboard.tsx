@@ -5,6 +5,8 @@ import { useNavigate } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { PageTransition } from "../components/PageTransition";
+import { MapContainer, TileLayer, Circle, Popup } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
 import { 
   Filter, 
   Download, 
@@ -21,6 +23,7 @@ import {
 
 export default function Dashboard() {
   const [alerts, setAlerts] = useState<ExternalAlert[]>([]);
+  const [radarTimestamp, setRadarTimestamp] = useState<number | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -30,7 +33,28 @@ export default function Dashboard() {
     }
     loadData();
     const interval = setInterval(loadData, 60000); // refresh every minute
-    return () => clearInterval(interval);
+
+    async function loadRadar() {
+      try {
+        const res = await fetch("https://api.rainviewer.com/public/weather-maps.json");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.radar && data.radar.past && data.radar.past.length > 0) {
+            const latest = data.radar.past[data.radar.past.length - 1].time;
+            setRadarTimestamp(latest);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load rainviewer map data", err);
+      }
+    }
+    loadRadar();
+    const radarInterval = setInterval(loadRadar, 10 * 60000); // refresh radar every 10 min
+    
+    return () => {
+      clearInterval(interval);
+      clearInterval(radarInterval);
+    };
   }, []);
 
   const alertsSul = alerts.filter(a => a.region === "Sul").length;
@@ -72,48 +96,75 @@ export default function Dashboard() {
           {/* Bento Grid Layout */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-gutter">
             
-            {/* 1. Mapa de Alertas */}
-            <div className="bg-surface-container-low border border-surface-container-highest rounded-lg md:col-span-2 flex flex-col relative overflow-hidden h-[400px]">
-              <div className="p-card-padding border-b border-surface-container-highest flex justify-between items-center z-10 bg-surface-container-low/80 backdrop-blur-sm">
-                <div className="flex items-center gap-2">
-                  <MapIcon className="text-primary" size={18} />
-                  <h2 className="font-data-mono text-data-mono text-on-surface uppercase tracking-wider">Mapeamento de Riscos Ativos</h2>
-                </div>
-                <div className="flex gap-2">
-                  <span className="bg-surface-container-highest text-inverse-surface font-label-caps text-label-caps px-2 py-1 rounded">Visualização: Regiões</span>
-                </div>
-              </div>
-              <div className="flex-1 relative flex">
-                <div className="absolute inset-0 bg-background bg-opacity-50 z-0">
-                  <img alt="Map of Brazil" className="w-full h-full object-cover opacity-30 mix-blend-screen" src="https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&q=80"/>
-                  <div className="absolute inset-0 bg-gradient-to-t from-surface-container-low via-transparent to-transparent"></div>
-                </div>
-                <div className="relative z-10 w-full p-4 flex flex-col justify-end">
-                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                    <div className="bg-surface/90 border border-surface-container-highest p-3 rounded flex flex-col">
-                      <span className="font-label-caps text-label-caps text-outline mb-1">SUL</span>
-                      <span className="font-headline-md text-headline-md text-error">{alertsSul.toString().padStart(2, '0')}</span>
-                    </div>
-                    <div className="bg-surface/90 border border-surface-container-highest p-3 rounded flex flex-col">
-                      <span className="font-label-caps text-label-caps text-outline mb-1">SUDESTE</span>
-                      <span className="font-headline-md text-headline-md text-primary">{alertsSudeste.toString().padStart(2, '0')}</span>
-                    </div>
-                    <div className="bg-surface/90 border border-surface-container-highest p-3 rounded flex flex-col">
-                      <span className="font-label-caps text-label-caps text-outline mb-1">NORDESTE</span>
-                      <span className="font-headline-md text-headline-md text-tertiary">{alertsNordeste.toString().padStart(2, '0')}</span>
-                    </div>
-                    <div className="bg-surface/90 border border-surface-container-highest p-3 rounded flex flex-col">
-                      <span className="font-label-caps text-label-caps text-outline mb-1">NORTE</span>
-                      <span className="font-headline-md text-headline-md text-inverse-surface">01</span>
-                    </div>
-                    <div className="bg-surface/90 border border-surface-container-highest p-3 rounded flex flex-col">
-                      <span className="font-label-caps text-label-caps text-outline mb-1">CENTRO-OESTE</span>
-                      <span className="font-headline-md text-headline-md text-inverse-surface">00</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+             {/* 1. Mapa de Alertas */}
+             <div className="bg-surface-container-low border border-surface-container-highest rounded-lg md:col-span-2 flex flex-col relative overflow-hidden h-[400px]">
+               <div className="p-card-padding border-b border-surface-container-highest flex justify-between items-center z-10 bg-surface-container-low/80 backdrop-blur-sm relative custom-z-index">
+                 <div className="flex items-center gap-2">
+                   <MapIcon className="text-primary" size={18} />
+                   <h2 className="font-data-mono text-data-mono text-on-surface uppercase tracking-wider">Radar Meteorológico & Áreas de Risco (Live)</h2>
+                 </div>
+                 <div className="flex gap-2">
+                   <span className="bg-surface-container-highest text-inverse-surface font-label-caps text-label-caps px-2 py-1 rounded">Tempo Real</span>
+                 </div>
+               </div>
+               <div className="flex-1 relative flex z-0">
+                  <MapContainer center={[-14.235, -51.925]} zoom={4} style={{ height: '100%', width: '100%' }} zoomControl={false}>
+                    <TileLayer
+                      url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                      attribution='&copy; <a href="https://carto.com/">CARTO</a>'
+                    />
+                    {radarTimestamp && (
+                      <TileLayer
+                        url={`https://tilecache.rainviewer.com/v2/radar/${radarTimestamp}/256/{z}/{x}/{y}/2/1_1.png`}
+                        opacity={0.6}
+                      />
+                    )}
+                    {alerts.filter(a => a.latitude && a.longitude).map(alert => (
+                      <Circle
+                         key={alert.externalId}
+                         center={[alert.latitude!, alert.longitude!]}
+                         radius={alert.radiusKm ? alert.radiusKm * 1000 : 10000}
+                         pathOptions={{
+                            color: alert.severity === 'Crítica' ? '#FFB4AB' : (alert.severity === 'Alta' ? '#A8C7FA' : '#DBE4CE'),
+                            fillColor: alert.severity === 'Crítica' ? '#FFB4AB' : (alert.severity === 'Alta' ? '#A8C7FA' : '#DBE4CE'),
+                            fillOpacity: 0.4,
+                            weight: 2
+                         }}
+                      >
+                         <Popup className="text-on-surface">
+                            <strong>{alert.disasterType}</strong><br/>
+                            {alert.city} - {alert.severity}
+                         </Popup>
+                      </Circle>
+                    ))}
+                  </MapContainer>
+                  
+                 <div className="absolute inset-0 pointer-events-none z-[1000] p-4 flex flex-col justify-end">
+                   <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                     <div className="bg-surface/90 border border-surface-container-highest p-3 rounded flex flex-col pointer-events-auto">
+                       <span className="font-label-caps text-label-caps text-outline mb-1">SUL</span>
+                       <span className="font-headline-md text-headline-md text-error">{alertsSul.toString().padStart(2, '0')}</span>
+                     </div>
+                     <div className="bg-surface/90 border border-surface-container-highest p-3 rounded flex flex-col pointer-events-auto">
+                       <span className="font-label-caps text-label-caps text-outline mb-1">SUDESTE</span>
+                       <span className="font-headline-md text-headline-md text-primary">{alertsSudeste.toString().padStart(2, '0')}</span>
+                     </div>
+                     <div className="bg-surface/90 border border-surface-container-highest p-3 rounded flex flex-col pointer-events-auto">
+                       <span className="font-label-caps text-label-caps text-outline mb-1">NORDESTE</span>
+                       <span className="font-headline-md text-headline-md text-tertiary">{alertsNordeste.toString().padStart(2, '0')}</span>
+                     </div>
+                     <div className="bg-surface/90 border border-surface-container-highest p-3 rounded flex flex-col pointer-events-auto">
+                       <span className="font-label-caps text-label-caps text-outline mb-1">NORTE</span>
+                       <span className="font-headline-md text-headline-md text-inverse-surface">01</span>
+                     </div>
+                     <div className="bg-surface/90 border border-surface-container-highest p-3 rounded flex flex-col pointer-events-auto">
+                       <span className="font-label-caps text-label-caps text-outline mb-1">CENTRO-OESTE</span>
+                       <span className="font-headline-md text-headline-md text-inverse-surface">00</span>
+                     </div>
+                   </div>
+                 </div>
+               </div>
+             </div>
 
             {/* 2. Tendência 48h */}
             <div className="bg-surface-container-low border border-surface-container-highest rounded-lg md:col-span-1 flex flex-col h-[400px]">
