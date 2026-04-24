@@ -60,7 +60,19 @@ export async function runCronJob() {
       console.log(`⚠️ ALERTA EXTREMO DE CHUVA DECTADO: ${alert.precipitationExpected}mm previsto em ${alert.city}. Risco alto de alagamento imediato.`);
     }
 
-    // 4. Verify if alert was dispatched in last 6 hours to prevent spam
+    // 4. Verify if this exact alert was already dispatched (Anti-Spam / Anti-Duplication)
+    const { data: duplicateAlert } = await supabaseAdmin
+      .from("alerts_log")
+      .select("id")
+      .eq("external_id", alert.externalId)
+      .maybeSingle();
+
+    if (duplicateAlert) {
+      console.log(`[Cancelado] Alerta ${alert.externalId} já processado e enviado anteriormente.`);
+      continue; // Skip, já foi enviado
+    }
+
+    // 5. Check secondary anti-spam based on region and time for similar alerts (prevent flood)
     const sixHoursAgo = subHours(new Date(), 6);
     
     const { data: recentAlerts } = await supabaseAdmin
@@ -76,7 +88,7 @@ export async function runCronJob() {
       continue; // Skip
     }
 
-    // 5. New Critical Alert. Save to DB and Send Email preemptively.
+    // 6. New Critical Alert. Save to DB and Send Email preemptively.
     const { data: insertedAlert, error } = await supabaseAdmin
       .from("alerts_log")
       .insert({

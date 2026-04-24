@@ -2,7 +2,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import { useEffect, useState } from "react";
 import { fetchGovAlerts, ExternalAlert } from "../services/dataService";
-import { format } from "date-fns";
+import { safeFormat } from "../utils/dateTools";
 import { PageTransition } from "../components/PageTransition";
 import { 
   AlertTriangle, 
@@ -76,7 +76,7 @@ export default function AlertDetail() {
                   </span>
                   <span className="flex items-center gap-2 text-slate-600 font-medium">
                     <Clock size={18} className="text-slate-400" />
-                    Emitido: {format(new Date(alert.issuedAt), "HH:mm 'BRT'")}
+                    Emitido: {safeFormat(alert.issuedAt, "HH:mm 'BRT'")}
                   </span>
                 </div>
 
@@ -153,7 +153,7 @@ export default function AlertDetail() {
               {/* Rodapé / Meta */}
                <div className="text-sm text-slate-400 mt-4 pt-4 border-t border-slate-100 flex items-center justify-between">
                  <span>Fonte Oficial: {alert.source}</span>
-                 <span>Atualizado: {format(new Date(), "dd/MM/yyyy HH:mm")}</span>
+                 <span>Atualizado: {safeFormat(new Date().toISOString(), "dd/MM/yyyy HH:mm")}</span>
                </div>
             </div>
 

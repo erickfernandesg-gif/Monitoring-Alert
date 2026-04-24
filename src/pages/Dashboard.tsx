@@ -2,8 +2,7 @@ import { useEffect, useState } from "react";
 import Sidebar from "../components/Sidebar";
 import { fetchGovAlerts, fetchPressNews, ExternalAlert, NewsArticle } from "../services/dataService";
 import { useNavigate } from "react-router-dom";
-import { formatDistanceToNow, format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { safeFormatDistanceToNow, safeFormat } from "../utils/dateTools";
 import { PageTransition } from "../components/PageTransition";
 import { MapContainer, TileLayer, Circle, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
@@ -220,7 +219,7 @@ export default function Dashboard() {
                           <span className="font-bold text-slate-800 tracking-tight">{alert.disasterType}</span>
                         </div>
                         <span className="text-xs font-medium text-slate-400">
-                          {formatDistanceToNow(new Date(alert.issuedAt), { addSuffix: true, locale: ptBR })}
+                          {safeFormatDistanceToNow(alert.issuedAt)}
                         </span>
                       </div>
                       <div className="text-sm text-slate-600 mb-3 line-clamp-2 leading-relaxed">{alert.description}</div>
@@ -271,7 +270,7 @@ export default function Dashboard() {
                           {item.source}
                         </span>
                         <span className="text-xs font-medium text-slate-500">
-                          {format(new Date(item.pubDate.replace(" ", "T")), "dd/MM/yyyy HH:mm")}
+                          {safeFormat(item.pubDate.replace(" ", "T"), "dd/MM/yyyy HH:mm")}
                         </span>
                       </div>
                       <a href={item.link} target="_blank" rel="noopener noreferrer" className="block">

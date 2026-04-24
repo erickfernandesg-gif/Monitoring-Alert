@@ -40,6 +40,41 @@ app.post("/api/cron/process-alerts", async (req, res) => {
   }
 });
 
+// A route to manually trigger a test email
+app.post("/api/test-email", async (req, res) => {
+  try {
+    // Import here to avoid top-level issues if env is missing
+    const { supabaseAdmin } = await import("./src/services/supabaseAdmin.js");
+    const { sendAlertEmail } = await import("./src/services/emailService.js");
+
+    const { data: subscribers, error } = await supabaseAdmin.from("team_subscribers").select("email");
+    
+    if (error) throw error;
+    if (!subscribers || subscribers.length === 0) {
+      return res.status(400).json({ error: "Não há destinatários cadastrados." });
+    }
+    
+    const emails = subscribers.map((s: any) => s.email);
+
+    const fakeAlert = {
+      externalId: "TEST-000",
+      source: "DEFESA_CIVIL",
+      severity: "Crítica",
+      region: "Servidor Local",
+      city: "Cidade Teste",
+      disasterType: "TESTE DE SISTEMA",
+      description: "Este é um e-mail de teste manual para verificar a estabilidade do pipeline de mensagens.",
+      issuedAt: new Date(),
+    };
+
+    await sendAlertEmail(emails, fakeAlert as any);
+    res.json({ success: true, message: "E-mail de teste enviado para " + emails.length + " destinatários." });
+  } catch (err: any) {
+    console.error("Test Email Error:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // Trigger a local cron interval for demonstration since not deployed on Vercel yet
 // Every 15 minutes = 15 * 60 * 1000
 setInterval(() => {
