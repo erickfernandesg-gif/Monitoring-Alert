@@ -120,7 +120,7 @@ export default function Admin() {
   return (
     <div className="bg-background text-on-background min-h-screen flex overflow-hidden">
       <Sidebar />
-      <main className="flex-1 md:ml-64 mt-14 md:mt-0 p-container-margin overflow-y-auto bg-background">
+      <main className="flex-1 md:ml-20 mt-14 md:mt-0 p-container-margin overflow-y-auto bg-background">
         <PageTransition>
           <header className="mb-container-margin">
             <h1 className="font-display-lg text-headline-md text-on-surface mb-1">Painel Administrativo</h1>

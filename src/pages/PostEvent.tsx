@@ -90,7 +90,7 @@ export default function PostEvent() {
   return (
     <div className="bg-background text-on-background min-h-screen flex overflow-hidden">
       <Sidebar />
-      <main className="flex-1 md:ml-64 mt-14 md:mt-0 p-container-margin overflow-y-auto w-full">
+      <main className="flex-1 md:ml-20 mt-14 md:mt-0 p-container-margin overflow-y-auto w-full">
         <PageTransition>
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
             <div>

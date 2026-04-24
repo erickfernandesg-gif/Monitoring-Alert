@@ -15,7 +15,8 @@ import {
   Activity, 
   TrendingUp, 
   Wind, 
-  CheckSquare 
+  CheckSquare,
+  ArrowLeft
 } from "lucide-react";
 
 export default function AlertDetail() {
@@ -32,131 +33,130 @@ export default function AlertDetail() {
     loadData();
   }, [id]);
 
-  if (!alert) return <div className="bg-background text-on-surface h-screen flex justify-center items-center">Loading...</div>;
+  if (!alert) return <div className="bg-slate-50 text-slate-500 h-screen flex justify-center items-center">Buscando detalhes do alerta...</div>;
 
   return (
-    <div className="bg-background text-on-background min-h-screen flex overflow-hidden">
+    <div className="bg-slate-50 text-slate-900 min-h-screen flex overflow-hidden">
       <Sidebar />
-      <main className="flex-1 md:ml-64 mt-14 md:mt-0 p-container-margin overflow-y-auto w-full">
+      <main className="flex-1 md:ml-20 mt-14 md:mt-0 p-4 md:p-8 overflow-y-auto w-full">
         <PageTransition>
-          <div className="max-w-[1600px] mx-auto grid grid-cols-12 gap-stack-md">
+          <div className="max-w-4xl mx-auto py-4">
             
-            {/* Header */}
-            <div className="col-span-12 flex flex-col md:flex-row justify-between items-start md:items-end border-b border-surface-container-highest pb-stack-md mb-stack-md gap-stack-md">
-              <div className="flex flex-col gap-unit">
-                <div className="flex items-center gap-stack-sm mb-unit flex-wrap">
-                  <span className={`px-2 py-0.5 rounded font-label-caps text-label-caps uppercase flex items-center gap-1 shadow-sm border ${alert.severity === 'Crítica' ? 'bg-error text-on-error border-error shadow-[0_0_8px_rgba(255,180,171,0.3)]' : 'bg-primary text-on-primary border-primary'}`}>
-                    <AlertTriangle size={12} fill="currentColor" />
+            {/* Botão Voltar */}
+            <button 
+              onClick={() => navigate(-1)} 
+              className="text-slate-500 hover:text-slate-800 transition-colors flex items-center gap-2 mb-6 font-semibold text-sm"
+            >
+              <ArrowLeft size={16} /> Voltar para o Dashboard
+            </button>
+
+            {/* Cartão Bento Principal */}
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 md:p-8 flex flex-col gap-8">
+              
+              {/* Header do Alerta */}
+              <div className="flex flex-col gap-4 border-b border-slate-100 pb-8">
+                <div className="flex items-center gap-3 mb-2 flex-wrap">
+                  <span className={`px-3 py-1 rounded-full text-sm font-semibold flex items-center gap-1.5 shadow-sm border ${
+                    alert.severity === 'Crítica' ? 'bg-red-100 text-red-700 border-red-200' : 'bg-orange-100 text-orange-700 border-orange-200'
+                  }`}>
+                    <AlertTriangle size={14} fill="currentColor" />
                     NÍVEL {alert.severity.toUpperCase()}
                   </span>
-                  <span className="font-data-mono text-data-mono text-surface-variant bg-surface-container px-2 py-0.5 rounded border border-surface-container-highest">
+                  <span className="text-xs font-bold text-slate-400 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200 tracking-wider">
                     ID: {alert.externalId}
                   </span>
                 </div>
-                <h1 className="font-display-lg text-display-lg text-on-surface uppercase m-0 leading-tight tracking-tight">Risco de {alert.disasterType}</h1>
-                <div className="flex items-center gap-stack-md text-on-surface-variant font-data-mono text-data-mono mt-1">
-                  <span className="flex items-center gap-1">
-                    <MapPin size={16} />
+                
+                <h1 className="text-3xl font-bold text-slate-800 m-0 leading-tight tracking-tight">Risco de {alert.disasterType}</h1>
+                
+                <div className="flex flex-wrap items-center gap-6 mt-1">
+                  <span className="flex items-center gap-2 text-slate-600 font-medium">
+                    <MapPin size={18} className="text-slate-400" />
                     {alert.city}, {alert.state}
                   </span>
-                  <span className="flex items-center gap-1">
-                    <Clock size={16} />
-                    T-ZERO: {format(new Date(alert.issuedAt), "HH:mm 'BRT'")}
+                  <span className="flex items-center gap-2 text-slate-600 font-medium">
+                    <Clock size={18} className="text-slate-400" />
+                    Emitido: {format(new Date(alert.issuedAt), "HH:mm 'BRT'")}
                   </span>
                 </div>
+
+                <div className="flex flex-wrap items-center gap-3 mt-4">
+                  <button className="flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors text-sm font-semibold text-slate-700 shadow-sm w-full sm:w-auto justify-center">
+                    <PhoneCall size={16} />
+                    Defesa Civil
+                  </button>
+                  <button className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors text-sm font-semibold w-full sm:w-auto justify-center shadow-sm">
+                    <RadioTower size={16} />
+                    Broadcast Alert
+                  </button>
+                  <button 
+                    onClick={() => navigate(`/post-event/${encodeURIComponent(alert.externalId)}`)}
+                    className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 rounded-xl hover:bg-slate-200 transition-colors text-sm font-semibold w-full sm:w-auto justify-center shadow-sm ml-auto"
+                  >
+                    <FileText size={16} />
+                    Relatório Pós-Evento
+                  </button>
+                </div>
               </div>
-              
-              <div className="flex items-center gap-stack-sm w-full md:w-auto flex-col sm:flex-row">
-                <button 
-                  onClick={() => navigate(`/post-event/${encodeURIComponent(alert.externalId)}`)}
-                  className="flex items-center gap-2 px-4 py-2 border border-surface-container-highest rounded bg-surface hover:bg-surface-container-low transition-colors font-label-caps text-label-caps text-on-surface uppercase w-full sm:w-auto justify-center whitespace-nowrap"
-                >
-                  <FileText size={16} />
-                  Relatório Pós-Evento
-                </button>
-                <button className="flex items-center gap-2 px-4 py-2 border border-error text-error rounded hover:bg-error/10 transition-colors font-label-caps text-label-caps uppercase w-full sm:w-auto justify-center whitespace-nowrap">
-                  <PhoneCall size={16} />
-                  Defesa Civil
-                </button>
-                <button className="flex items-center gap-2 px-4 py-2 bg-error text-on-error rounded hover:bg-error/90 transition-colors font-label-caps text-label-caps uppercase w-full sm:w-auto justify-center shadow-[0_0_15px_rgba(255,180,171,0.2)] whitespace-nowrap">
-                  <RadioTower size={16} />
-                  Broadcast Alert
-                </button>
+
+              {/* Corpo do Alerta */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                
+                {/* Visualização de Metadados Críticos */}
+                <div className="flex flex-col gap-4">
+                  <h2 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
+                    <Activity size={20} className="text-emerald-500" />
+                    Telemetria e Sensores
+                  </h2>
+                  <div className="bg-slate-50 rounded-xl p-5 border border-slate-100 flex flex-col gap-4">
+                     <div className="flex flex-col gap-1 pb-4 border-b border-slate-200/60">
+                        <span className="text-xs font-bold text-slate-400 tracking-wider">PRECIPITAÇÃO ESPERADA</span>
+                        <div className="flex items-end justify-between">
+                          <span className="text-3xl font-black text-slate-800 leading-none">
+                            {alert.precipitationExpected || 'N/A'}<span className="text-lg text-slate-500 font-medium ml-1">mm/h</span>
+                          </span>
+                          {alert.precipitationExpected && alert.precipitationExpected > 50 && (
+                            <span className="text-red-600 text-sm font-bold flex items-center gap-1 bg-red-50 px-2 py-0.5 rounded-md">
+                              <TrendingUp size={14} /> Crítico
+                            </span>
+                          )}
+                        </div>
+                     </div>
+                     <div className="flex flex-col gap-1">
+                        <span className="text-xs font-bold text-slate-400 tracking-wider">VENTOS OBSERVADOS</span>
+                        <div className="flex items-end justify-between">
+                          <span className="text-3xl font-black text-slate-800 leading-none">
+                            {alert.windSpeedExpected || '--'}<span className="text-lg text-slate-500 font-medium ml-1">km/h</span>
+                          </span>
+                          <span className="text-slate-500 text-sm font-bold flex items-center gap-1">
+                            <Wind size={14} /> NW
+                          </span>
+                        </div>
+                     </div>
+                  </div>
+                </div>
+
+                {/* Descrição em Texto Pleno */}
+                <div className="flex flex-col gap-4">
+                  <h2 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
+                    <CheckSquare size={20} className="text-blue-500" />
+                    Descrição do Ocorrido
+                  </h2>
+                  <div className="bg-slate-50 rounded-xl p-5 border border-slate-100 flex-1">
+                    <p className="text-slate-600 leading-relaxed">
+                      {alert.description}
+                    </p>
+                  </div>
+                </div>
               </div>
+
+              {/* Rodapé / Meta */}
+               <div className="text-sm text-slate-400 mt-4 pt-4 border-t border-slate-100 flex items-center justify-between">
+                 <span>Fonte Oficial: {alert.source}</span>
+                 <span>Atualizado: {format(new Date(), "dd/MM/yyyy HH:mm")}</span>
+               </div>
             </div>
 
-            {/* Map */}
-            <div className="col-span-12 lg:col-span-8 bg-surface-container-low rounded-lg border border-surface-container-highest flex flex-col overflow-hidden h-[500px]">
-              <div className="h-10 bg-surface flex items-center px-card-padding border-b border-surface-container-highest justify-between">
-                <h2 className="font-label-caps text-label-caps text-on-surface-variant uppercase flex items-center gap-2">
-                  <Satellite size={14} />
-                  Telemetria Geoespacial
-                </h2>
-              </div>
-              <div className="flex-1 relative bg-[#050505]">
-                <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&q=80')] bg-cover bg-center opacity-30 mix-blend-luminosity"></div>
-                <div className="absolute top-4 left-4 flex flex-col gap-2">
-                  <div className="bg-surface/90 border border-surface-container-highest rounded px-3 py-2 backdrop-blur-sm">
-                    <div className="font-label-caps text-label-caps text-on-surface-variant mb-1">ZONA DE IMPACTO</div>
-                    <div className="font-data-mono text-data-mono text-error">12.4 km²</div>
-                  </div>
-                </div>
-                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 border border-error/30 rounded-full flex items-center justify-center">
-                  <div className="w-32 h-32 border border-error/50 rounded-full flex items-center justify-center">
-                    <div className="w-2 h-2 bg-error rounded-full shadow-[0_0_10px_rgba(255,180,171,1)]"></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Sensor Data */}
-            <div className="col-span-12 lg:col-span-4 bg-surface-container-low rounded-lg border border-surface-container-highest flex flex-col">
-              <div className="h-10 bg-surface flex items-center px-card-padding border-b border-surface-container-highest border-t-2 border-t-error">
-                <h2 className="font-label-caps text-label-caps text-on-surface-variant uppercase flex items-center gap-2">
-                  <Activity size={14} />
-                  Dados dos Sensores
-                </h2>
-              </div>
-              <div className="p-card-padding flex flex-col gap-stack-md flex-1 overflow-y-auto">
-                <div className="flex flex-col gap-1 pb-stack-sm border-b border-surface-container-highest/50">
-                  <span className="font-label-caps text-label-caps text-surface-variant">PRECIPITAÇÃO (INMET)</span>
-                  <div className="flex items-end justify-between">
-                    <span className="font-display-lg text-display-lg text-on-surface">85<span className="text-headline-md text-on-surface-variant ml-1">mm/h</span></span>
-                    <span className="font-data-mono text-data-mono text-error flex items-center gap-1">
-                      <TrendingUp size={14} /> +12%
-                    </span>
-                  </div>
-                </div>
-                <div className="flex flex-col gap-1 pb-stack-sm border-b border-surface-container-highest/50">
-                  <span className="font-label-caps text-label-caps text-surface-variant">VELOCIDADE DOS VENTOS</span>
-                  <div className="flex items-end justify-between">
-                    <span className="font-display-lg text-display-lg text-on-surface">42<span className="text-headline-md text-on-surface-variant ml-1">km/h</span></span>
-                    <span className="font-data-mono text-data-mono text-on-surface-variant flex items-center gap-1">
-                      <Wind size={14} /> SE
-                    </span>
-                  </div>
-                </div>
-                <div className="mt-auto bg-surface-container rounded p-3 flex items-center justify-between border border-surface-container-highest">
-                  <span className="font-label-caps text-label-caps text-on-surface-variant">INMET STATION LINK</span>
-                  <span className="flex items-center gap-2 font-data-mono text-data-mono text-secondary">
-                    <span className="w-2 h-2 rounded-full bg-secondary"></span> ACTIVE
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Description Card */}
-            <div className="col-span-12 bg-surface-container-low rounded-lg border border-surface-container-highest flex flex-col mb-16">
-              <div className="h-10 bg-surface flex items-center px-card-padding border-b border-surface-container-highest">
-                <h2 className="font-label-caps text-label-caps text-on-surface-variant uppercase flex items-center gap-2">
-                  <CheckSquare size={14} />
-                  Descrição do Alerta
-                </h2>
-              </div>
-              <div className="p-card-padding flex flex-col gap-unit font-body-base text-on-surface">
-                {alert.description}
-              </div>
-            </div>
           </div>
         </PageTransition>
       </main>

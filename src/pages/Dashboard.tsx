@@ -75,30 +75,30 @@ export default function Dashboard() {
   const criticalCount = alerts.filter(a => a.severity === "Crítica").length;
 
   return (
-    <div className="bg-background text-on-background min-h-screen flex overflow-hidden">
+    <div className="bg-slate-50 text-slate-900 min-h-screen flex overflow-hidden">
       <Sidebar />
-      <main className="flex-1 md:ml-64 mt-14 md:mt-0 p-container-margin overflow-y-auto bg-background">
+      <main className="flex-1 md:ml-20 mt-14 md:mt-0 p-4 md:p-8 overflow-y-auto bg-slate-50">
         <PageTransition>
           {/* Dashboard Header */}
-          <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-container-margin">
+          <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
             <div>
-              <h1 className="font-headline-md text-headline-md text-on-surface mb-1">Painel Operacional Brasil</h1>
-              <div className="flex items-center gap-2">
-                <span className="flex h-2 w-2 relative">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-secondary opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-secondary"></span>
+              <h1 className="text-3xl font-bold tracking-tight text-slate-900 mb-2">Painel Operacional Brasil</h1>
+              <div className="flex items-center gap-3">
+                <span className="flex h-3 w-3 relative">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
                 </span>
-                <span className="font-data-mono text-data-mono text-secondary">Monitoramento Ativo 24/7</span>
-                <span className="text-surface-highest px-2">•</span>
-                <span className="font-label-caps text-label-caps text-outline">Última atualização: recém atualizado</span>
+                <span className="text-sm font-semibold text-emerald-600">Monitoramento Ativo 24/7</span>
+                <span className="text-slate-300">•</span>
+                <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">Centro de Comando Local</span>
               </div>
             </div>
-            <div className="flex gap-2">
-              <button className="bg-surface-container-low border border-surface-container-high hover:border-outline-variant text-on-surface font-data-mono text-data-mono px-4 py-2 rounded flex items-center gap-2 transition-colors">
+            <div className="flex gap-3">
+              <button className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-semibold px-4 py-2 rounded-xl flex items-center gap-2 transition-all shadow-sm">
                 <Filter size={16} />
                 Filtros
               </button>
-              <button className="bg-surface-container-low border border-surface-container-high hover:border-outline-variant text-on-surface font-data-mono text-data-mono px-4 py-2 rounded flex items-center gap-2 transition-colors">
+              <button className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-semibold px-4 py-2 rounded-xl flex items-center gap-2 transition-all shadow-sm">
                 <Download size={16} />
                 Exportar
               </button>
@@ -106,169 +106,137 @@ export default function Dashboard() {
           </header>
 
           {/* Bento Grid Layout */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-gutter">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             
-             {/* 1. Mapa de Alertas */}
-             <div className="bg-surface-container-low border border-surface-container-highest rounded-lg md:col-span-2 flex flex-col relative overflow-hidden h-[400px]">
-               <div className="p-card-padding border-b border-surface-container-highest flex justify-between items-center z-10 bg-surface-container-low/80 backdrop-blur-sm relative custom-z-index">
-                 <div className="flex items-center gap-2">
-                   <MapIcon className="text-primary" size={18} />
-                   <h2 className="font-data-mono text-data-mono text-on-surface uppercase tracking-wider">Radar Meteorológico & Áreas de Risco (Live)</h2>
-                 </div>
-                 <div className="flex gap-2">
-                   <span className="bg-surface-container-highest text-inverse-surface font-label-caps text-label-caps px-2 py-1 rounded">Tempo Real</span>
-                 </div>
-               </div>
-               <div className="flex-1 relative flex z-0">
-                  <MapContainer center={[-14.235, -51.925]} zoom={4} style={{ height: '100%', width: '100%' }} zoomControl={false}>
-                    <TileLayer
-                      url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-                      attribution='&copy; <a href="https://carto.com/">CARTO</a>'
-                    />
-                    {radarTimestamp && (
-                      <TileLayer
-                        url={`https://tilecache.rainviewer.com/v2/radar/${radarTimestamp}/256/{z}/{x}/{y}/2/1_1.png`}
-                        opacity={0.6}
-                      />
-                    )}
-                    {alerts.filter(a => a.latitude && a.longitude).map(alert => (
-                      <Circle
-                         key={alert.externalId}
-                         center={[alert.latitude!, alert.longitude!]}
-                         radius={alert.radiusKm ? alert.radiusKm * 1000 : 10000}
-                         pathOptions={{
-                            color: alert.severity === 'Crítica' ? '#FFB4AB' : (alert.severity === 'Alta' ? '#A8C7FA' : '#DBE4CE'),
-                            fillColor: alert.severity === 'Crítica' ? '#FFB4AB' : (alert.severity === 'Alta' ? '#A8C7FA' : '#DBE4CE'),
-                            fillOpacity: 0.4,
-                            weight: 2
-                         }}
-                      >
-                         <Popup className="text-on-surface">
-                            <strong>{alert.disasterType}</strong><br/>
-                            {alert.city} - {alert.severity}
-                         </Popup>
-                      </Circle>
-                    ))}
-                  </MapContainer>
-                  
-                 <div className="absolute inset-0 pointer-events-none z-[1000] p-4 flex flex-col justify-end">
-                   <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                     <div className="bg-surface/90 border border-surface-container-highest p-3 rounded flex flex-col pointer-events-auto">
-                       <span className="font-label-caps text-label-caps text-outline mb-1">SUL</span>
-                       <span className="font-headline-md text-headline-md text-error">{alertsSul.toString().padStart(2, '0')}</span>
-                     </div>
-                     <div className="bg-surface/90 border border-surface-container-highest p-3 rounded flex flex-col pointer-events-auto">
-                       <span className="font-label-caps text-label-caps text-outline mb-1">SUDESTE</span>
-                       <span className="font-headline-md text-headline-md text-primary">{alertsSudeste.toString().padStart(2, '0')}</span>
-                     </div>
-                     <div className="bg-surface/90 border border-surface-container-highest p-3 rounded flex flex-col pointer-events-auto">
-                       <span className="font-label-caps text-label-caps text-outline mb-1">NORDESTE</span>
-                       <span className="font-headline-md text-headline-md text-tertiary">{alertsNordeste.toString().padStart(2, '0')}</span>
-                     </div>
-                     <div className="bg-surface/90 border border-surface-container-highest p-3 rounded flex flex-col pointer-events-auto">
-                       <span className="font-label-caps text-label-caps text-outline mb-1">NORTE</span>
-                       <span className="font-headline-md text-headline-md text-inverse-surface">01</span>
-                     </div>
-                     <div className="bg-surface/90 border border-surface-container-highest p-3 rounded flex flex-col pointer-events-auto">
-                       <span className="font-label-caps text-label-caps text-outline mb-1">CENTRO-OESTE</span>
-                       <span className="font-headline-md text-headline-md text-inverse-surface">00</span>
-                     </div>
-                   </div>
-                 </div>
-               </div>
-             </div>
-
-            {/* 2. Tendência 48h */}
-            <div className="bg-surface-container-low border border-surface-container-highest rounded-lg md:col-span-1 flex flex-col h-[400px]">
-              <div className="p-card-padding border-b border-surface-container-highest flex justify-between items-center">
+            {/* 1. Mapa de Alertas */}
+            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm lg:col-span-2 flex flex-col relative overflow-hidden h-[500px]">
+              <div className="p-6 border-b border-slate-100 flex justify-between items-center z-10 bg-white/90 backdrop-blur-sm relative custom-z-index">
                 <div className="flex items-center gap-2">
-                  <TrendingUp className="text-outline" size={18} />
-                  <h2 className="font-data-mono text-data-mono text-on-surface uppercase tracking-wider">Tendência 48h</h2>
+                  <MapIcon className="text-slate-500" size={20} />
+                  <h2 className="text-slate-800 font-bold tracking-tight">Radar Meteorológico & Áreas de Risco (Live)</h2>
+                </div>
+                <div className="flex gap-2">
+                  <span className="bg-slate-100 text-slate-600 font-semibold px-3 py-1 rounded-full text-xs">Tempo Real</span>
                 </div>
               </div>
-              <div className="flex-1 p-card-padding flex flex-col justify-end relative">
-                <div className="absolute top-4 left-4 font-headline-md text-headline-md text-on-surface">
-                  {criticalCount} <span className="font-data-mono text-data-mono text-outline">Eventos Críticos</span>
-                </div>
-                <div className="flex items-end justify-between h-[200px] gap-1 pb-4 border-b border-surface-container-highest">
-                  <div className="w-full bg-surface-container-highest rounded-t-sm h-[20%]"></div>
-                  <div className="w-full bg-surface-container-highest rounded-t-sm h-[35%]"></div>
-                  <div className="w-full bg-surface-container-highest rounded-t-sm h-[25%]"></div>
-                  <div className="w-full bg-surface-container-highest rounded-t-sm h-[50%]"></div>
-                  <div className="w-full bg-primary-container rounded-t-sm h-[80%] hover:opacity-80 transition-opacity"></div>
-                  <div className="w-full bg-error rounded-t-sm h-[100%] hover:opacity-80 transition-opacity"></div>
-                  <div className="w-full bg-primary-container rounded-t-sm h-[70%] hover:opacity-80 transition-opacity"></div>
-                  <div className="w-full bg-surface-container-highest rounded-t-sm h-[40%]"></div>
-                  <div className="w-full bg-surface-container-highest rounded-t-sm h-[30%]"></div>
-                  <div className="w-full bg-surface-container-highest rounded-t-sm h-[15%]"></div>
-                </div>
-                <div className="flex justify-between mt-2 font-label-caps text-label-caps text-outline">
-                  <span>-48h</span>
-                  <span>-24h</span>
-                  <span>Agora</span>
+              <div className="flex-1 relative flex z-0">
+                <MapContainer center={[-14.235, -51.925]} zoom={4} style={{ height: '100%', width: '100%' }} zoomControl={false} className="z-0">
+                  <TileLayer
+                    url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+                    attribution='&copy; <a href="https://carto.com/">CARTO</a>'
+                  />
+                  {radarTimestamp && (
+                    <TileLayer
+                      url={`https://tilecache.rainviewer.com/v2/radar/${radarTimestamp}/256/{z}/{x}/{y}/2/1_1.png`}
+                      opacity={0.5}
+                    />
+                  )}
+                  {alerts.filter(a => a.latitude && a.longitude).map(alert => (
+                    <Circle
+                       key={alert.externalId}
+                       center={[alert.latitude!, alert.longitude!]}
+                       radius={alert.radiusKm ? alert.radiusKm * 1000 : 10000}
+                       pathOptions={{
+                          color: alert.severity === 'Crítica' ? '#ef4444' : (alert.severity === 'Alta' ? '#f97316' : '#eab308'),
+                          fillColor: alert.severity === 'Crítica' ? '#ef4444' : (alert.severity === 'Alta' ? '#f97316' : '#eab308'),
+                          fillOpacity: 0.3,
+                          weight: 2
+                       }}
+                    >
+                       <Popup className="text-slate-800">
+                          <strong>{alert.disasterType}</strong><br/>
+                          {alert.city} - {alert.severity}
+                       </Popup>
+                    </Circle>
+                  ))}
+                </MapContainer>
+                  
+                <div className="absolute inset-0 pointer-events-none z-[1000] p-6 flex flex-col justify-end">
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                    <div className="bg-white/95 border border-slate-100 p-4 rounded-xl shadow-sm flex flex-col pointer-events-auto">
+                      <span className="text-xs font-bold text-slate-400 mb-1 uppercase tracking-wider">SUL</span>
+                      <span className="text-2xl font-bold text-red-600">{alertsSul.toString().padStart(2, '0')}</span>
+                    </div>
+                    <div className="bg-white/95 border border-slate-100 p-4 rounded-xl shadow-sm flex flex-col pointer-events-auto">
+                      <span className="text-xs font-bold text-slate-400 mb-1 uppercase tracking-wider">SUDESTE</span>
+                      <span className="text-2xl font-bold text-slate-800">{alertsSudeste.toString().padStart(2, '0')}</span>
+                    </div>
+                    <div className="bg-white/95 border border-slate-100 p-4 rounded-xl shadow-sm flex flex-col pointer-events-auto">
+                      <span className="text-xs font-bold text-slate-400 mb-1 uppercase tracking-wider">NORDESTE</span>
+                      <span className="text-2xl font-bold text-slate-800">{alertsNordeste.toString().padStart(2, '0')}</span>
+                    </div>
+                    <div className="bg-white/95 border border-slate-100 p-4 rounded-xl shadow-sm flex flex-col pointer-events-auto">
+                      <span className="text-xs font-bold text-slate-400 mb-1 uppercase tracking-wider">NORTE</span>
+                      <span className="text-2xl font-bold text-slate-800">01</span>
+                    </div>
+                    <div className="bg-white/95 border border-slate-100 p-4 rounded-xl shadow-sm flex flex-col pointer-events-auto">
+                      <span className="text-xs font-bold text-slate-400 mb-1 uppercase tracking-wider">CENTRO-OESTE</span>
+                      <span className="text-2xl font-bold text-slate-800">00</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* 3. Feed de Alertas em Tempo Real */}
-            <div className="bg-surface-container-low border border-surface-container-highest rounded-lg md:col-span-2 lg:col-span-1.5 flex flex-col h-[500px]">
-              <div className="p-card-padding border-b border-error/30 bg-error/5 flex justify-between items-center">
+            {/* 3. Feed de Alertas Táticos */}
+            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm lg:col-span-1 flex flex-col h-[500px]">
+              <div className="p-6 border-b border-slate-100 flex justify-between items-center rounded-t-2xl bg-white">
                 <div className="flex items-center gap-2">
-                  <AlertTriangle className="text-error" fill="currentColor" size={18} />
-                  <h2 className="font-data-mono text-data-mono text-on-surface uppercase tracking-wider">Feed de Alertas Táticos</h2>
+                  <AlertTriangle className="text-slate-500" size={20} />
+                  <h2 className="text-slate-800 font-bold tracking-tight">Alertas Táticos</h2>
                 </div>
-                <span className="bg-error/10 text-error font-label-caps text-label-caps px-2 py-1 rounded border border-error/20">AO VIVO</span>
+                <span className="bg-red-50 text-red-600 font-semibold px-3 py-1 rounded-full text-xs flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse"></span>
+                  AO VIVO
+                </span>
               </div>
               <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
                 {alerts.length === 0 ? (
-                  <div className="text-on-surface-variant font-body-base text-sm text-center py-4">Carregando dados...</div>
+                  <div className="text-slate-500 text-sm text-center py-8">Monitorando sistemas...</div>
                 ) : null}
                 {alerts.map((alert) => (
                   <div 
                     key={alert.externalId} 
-                    className={`bg-surface border rounded flex overflow-hidden cursor-pointer transition-all duration-300 group ${
+                    className={`bg-white border rounded-xl flex overflow-hidden cursor-pointer transition-all duration-200 group shadow-sm hover:shadow-md ${
                       alert.severity === 'Crítica' 
-                        ? 'border-error/30 hover:border-error hover:bg-error/5 shadow-sm hover:shadow-[0_0_15px_rgba(255,180,171,0.15)]' 
+                        ? 'border-red-200 hover:border-red-300' 
                         : alert.severity === 'Alta' 
-                          ? 'border-primary/30 hover:border-primary hover:bg-primary/5 shadow-sm hover:shadow-[0_0_15px_rgba(168,199,250,0.15)]' 
-                          : 'border-tertiary/30 hover:border-tertiary hover:bg-tertiary/5 shadow-sm hover:shadow-[0_0_15px_rgba(219,228,206,0.15)]'
+                          ? 'border-orange-200 hover:border-orange-300' 
+                          : 'border-yellow-200 hover:border-yellow-300'
                     }`}
                     onClick={() => navigate(`/alert/${encodeURIComponent(alert.externalId)}`)}
                   >
-                    <div className={`w-1 transition-transform group-hover:scale-y-110 ${alert.severity === 'Crítica' ? 'bg-error' : alert.severity === 'Alta' ? 'bg-primary' : 'bg-tertiary'}`}></div>
-                    <div className="p-3 flex-1">
-                      <div className="flex justify-between items-start mb-1">
+                    <div className={`w-1.5 transition-transform group-hover:scale-y-110 ${alert.severity === 'Crítica' ? 'bg-red-500' : alert.severity === 'Alta' ? 'bg-orange-500' : 'bg-yellow-500'}`}></div>
+                    <div className="p-4 flex-1">
+                      <div className="flex justify-between items-start mb-2">
                         <div className="flex items-center gap-2">
-                          {alert.disasterType === 'Enchente' ? (
-                            <Waves size={16} className={alert.severity === 'Crítica' ? 'text-error' : alert.severity === 'Alta' ? 'text-primary' : 'text-tertiary'} />
-                          ) : alert.disasterType === 'Tempestade' ? (
-                            <CloudLightning size={16} className={alert.severity === 'Crítica' ? 'text-error' : alert.severity === 'Alta' ? 'text-primary' : 'text-tertiary'} />
+                          {alert.disasterType.toLowerCase().includes('enchente') ? (
+                            <Waves size={16} className={alert.severity === 'Crítica' ? 'text-red-600' : alert.severity === 'Alta' ? 'text-orange-600' : 'text-yellow-600'} />
+                          ) : alert.disasterType.toLowerCase().includes('tempestade') || alert.disasterType.toLowerCase().includes('chuva') ? (
+                            <CloudLightning size={16} className={alert.severity === 'Crítica' ? 'text-red-600' : alert.severity === 'Alta' ? 'text-orange-600' : 'text-yellow-600'} />
                           ) : (
-                            <AlertTriangle size={16} className={alert.severity === 'Crítica' ? 'text-error' : alert.severity === 'Alta' ? 'text-primary' : 'text-tertiary'} />
+                            <AlertTriangle size={16} className={alert.severity === 'Crítica' ? 'text-red-600' : alert.severity === 'Alta' ? 'text-orange-600' : 'text-yellow-600'} />
                           )}
-                          <span className="font-data-mono text-data-mono font-bold text-on-surface">{alert.disasterType} {alert.severity === 'Crítica' ? 'Severa' : ''}</span>
+                          <span className="font-bold text-slate-800 tracking-tight">{alert.disasterType}</span>
                         </div>
-                        <span className="font-label-caps text-label-caps text-outline">
+                        <span className="text-xs font-medium text-slate-400">
                           {formatDistanceToNow(new Date(alert.issuedAt), { addSuffix: true, locale: ptBR })}
                         </span>
                       </div>
-                      <div className="text-sm text-on-surface-variant mb-2 line-clamp-2">{alert.description}</div>
-                      <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-1 bg-surface-container px-1.5 py-0.5 rounded text-xs">
-                          <MapPin size={12} className="text-outline" />
-                          <span className="font-label-caps text-label-caps text-on-surface-variant">{alert.city}, {alert.state}</span>
+                      <div className="text-sm text-slate-600 mb-3 line-clamp-2 leading-relaxed">{alert.description}</div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <div className="flex items-center gap-1 bg-slate-100 text-slate-700 px-2 py-1 rounded-md text-xs font-medium">
+                          <MapPin size={12} className="text-slate-400" />
+                          {alert.city}, {alert.state}
                         </div>
-                        {alert.precipitationExpected !== undefined && alert.precipitationExpected > 0 && (
-                          <div className="flex items-center gap-1 bg-tertiary/10 text-tertiary px-1.5 py-0.5 rounded text-xs font-data-mono font-bold">
-                            <Droplets size={12} /> {alert.precipitationExpected}mm
+                        {(alert.severity === 'Alta' || alert.severity === 'Crítica') && (
+                          <div className={`px-3 py-1 rounded-full text-xs font-semibold flex items-center ${
+                             alert.severity === 'Crítica' ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'
+                          }`}>
+                            {alert.severity}
                           </div>
                         )}
-                        {alert.windSpeedExpected !== undefined && alert.windSpeedExpected > 0 && (
-                          <div className="flex items-center gap-1 bg-primary/10 text-primary px-1.5 py-0.5 rounded text-xs font-data-mono font-bold">
-                            <Wind size={12} /> {alert.windSpeedExpected}km/h
-                          </div>
-                        )}
-                        <div className="ml-auto text-[10px] font-bold tracking-widest uppercase text-outline">
+                        <div className="ml-auto text-[10px] font-bold tracking-widest uppercase text-slate-400">
                           {alert.source}
                         </div>
                       </div>
@@ -279,40 +247,77 @@ export default function Dashboard() {
             </div>
 
             {/* 4. Radar de Notícias */}
-            <div className="bg-surface-container-low border border-surface-container-highest rounded-lg md:col-span-1 lg:col-span-1.5 flex flex-col h-[500px]">
-              <div className="p-card-padding border-b border-surface-container-highest flex justify-between items-center">
+            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm lg:col-span-2 flex flex-col h-[500px]">
+              <div className="p-6 border-b border-slate-100 flex justify-between items-center rounded-t-2xl">
                 <div className="flex items-center gap-2">
-                  <Newspaper className="text-outline" size={18} />
-                  <h2 className="font-data-mono text-data-mono text-on-surface uppercase tracking-wider">Radar de Imprensa</h2>
+                  <Newspaper className="text-slate-500" size={20} />
+                  <h2 className="text-slate-800 font-bold tracking-tight">Radar de Imprensa (Tempo Real)</h2>
                 </div>
               </div>
-              <div className="flex-1 p-4 flex flex-col gap-4 overflow-y-auto">
+              <div className="flex-1 overflow-y-auto flex flex-col divide-y divide-slate-100">
                 {isLoadingNews ? (
-                  <div className="flex-1 flex items-center justify-center text-on-surface-variant font-data-mono">
-                    <span className="animate-pulse">Buscando notícias...</span>
+                  <div className="flex-1 flex items-center justify-center text-slate-500 text-sm h-full">
+                    <span className="animate-pulse">Buscando notícias no Google News...</span>
                   </div>
                 ) : news.length === 0 ? (
-                  <div className="flex-1 flex items-center justify-center text-on-surface-variant font-data-mono text-center">
+                  <div className="flex-1 flex items-center justify-center text-slate-500 text-sm h-full">
                     Nenhuma notícia crítica no momento.
                   </div>
                 ) : (
                   news.map((item) => (
-                    <div key={item.id} className="pb-4 border-b border-surface-container-highest last:border-0 last:pb-0 hover:bg-surface/50 p-2 rounded transition-colors group">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="bg-surface-container-highest text-inverse-surface font-label-caps text-label-caps px-2 py-0.5 rounded">{item.source}</span>
-                        <span className="font-label-caps text-label-caps text-outline">
+                    <div key={item.id} className="p-6 hover:bg-slate-50 transition-colors group flex flex-col gap-2">
+                      <div className="flex items-center gap-3 mb-1">
+                        <span className="bg-slate-100 text-slate-700 font-semibold px-2.5 py-1 rounded-md text-xs uppercase tracking-wider">
+                          {item.source}
+                        </span>
+                        <span className="text-xs font-medium text-slate-500">
                           {format(new Date(item.pubDate.replace(" ", "T")), "dd/MM/yyyy HH:mm")}
                         </span>
                       </div>
-                      <h3 className="font-data-mono text-[14px] text-on-surface group-hover:text-primary transition-colors cursor-pointer mb-2 leading-tight">
-                        {item.title}
-                      </h3>
-                      <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-primary hover:underline uppercase tracking-wider">
-                        Ler matéria →
+                      <a href={item.link} target="_blank" rel="noopener noreferrer" className="block">
+                         <h3 className="text-base text-slate-800 font-bold group-hover:text-blue-600 transition-colors leading-snug">
+                           {item.title}
+                         </h3>
+                      </a>
+                      <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-blue-600 hover:text-blue-700 mt-1 flex items-center gap-1 group-hover:underline">
+                        Ler matéria original &rarr;
                       </a>
                     </div>
                   ))
                 )}
+              </div>
+            </div>
+
+            {/* 2. Tendência 48h */}
+            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm lg:col-span-1 flex flex-col h-[500px]">
+              <div className="p-6 border-b border-slate-100 flex justify-between items-center rounded-t-2xl">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="text-slate-500" size={20} />
+                  <h2 className="text-slate-800 font-bold tracking-tight">Tendência 48h</h2>
+                </div>
+              </div>
+              <div className="flex-1 p-6 flex flex-col justify-end relative bg-slate-50 rounded-b-2xl">
+                <div className="absolute top-6 left-6 flex flex-col">
+                  <span className="text-4xl font-black text-slate-800 tracking-tighter">{criticalCount}</span>
+                  <span className="text-sm font-semibold text-slate-500">Eventos Críticos Ativos</span>
+                </div>
+                <div className="flex items-end justify-between h-[200px] gap-2 pb-4 border-b border-slate-200">
+                  <div className="w-full bg-slate-200 rounded-t-md h-[20%]"></div>
+                  <div className="w-full bg-slate-200 rounded-t-md h-[35%]"></div>
+                  <div className="w-full bg-slate-200 rounded-t-md h-[25%]"></div>
+                  <div className="w-full bg-slate-200 rounded-t-md h-[50%]"></div>
+                  <div className="w-full bg-orange-400 rounded-t-md h-[80%] hover:bg-orange-500 transition-colors shadow-sm"></div>
+                  <div className="w-full bg-red-500 rounded-t-md h-[100%] hover:bg-red-600 transition-colors shadow-sm"></div>
+                  <div className="w-full bg-orange-400 rounded-t-md h-[70%] hover:bg-orange-500 transition-colors shadow-sm"></div>
+                  <div className="w-full bg-slate-200 rounded-t-md h-[40%]"></div>
+                  <div className="w-full bg-slate-200 rounded-t-md h-[30%]"></div>
+                  <div className="w-full bg-slate-200 rounded-t-md h-[15%]"></div>
+                </div>
+                <div className="flex justify-between mt-3 text-xs font-bold uppercase tracking-wider text-slate-400">
+                  <span>-48h</span>
+                  <span>-24h</span>
+                  <span>Hoje</span>
+                </div>
               </div>
             </div>
 

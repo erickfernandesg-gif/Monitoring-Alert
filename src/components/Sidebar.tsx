@@ -115,9 +115,77 @@ export default function Sidebar() {
         )}
       </AnimatePresence>
 
-      {/* Desktop Sidebar (always static on md+) */}
-      <aside className="hidden md:flex bg-background fixed left-0 top-0 h-screen flex-col pt-16 pb-6 w-64 border-r border-surface-container-high font-body-base text-[11px] font-medium tracking-wide z-10">
-        <NavContent />
+      {/* Desktop Sidebar (Mini Sidebar Expand on Hover) */}
+      <aside className="hidden md:flex group fixed left-0 top-0 h-screen flex-col pt-8 pb-6 z-50 w-20 hover:w-64 transition-all duration-300 ease-in-out bg-slate-900 border-r border-slate-800 shadow-2xl overflow-hidden">
+        
+        {/* Logo Area */}
+        <div className="flex items-center mx-3 mb-8 h-12">
+          <div className="w-14 flex items-center justify-center flex-shrink-0">
+            <Activity className="text-emerald-500" size={28} />
+          </div>
+          <div className="opacity-0 w-0 overflow-hidden group-hover:w-auto group-hover:opacity-100 whitespace-nowrap transition-all duration-300 flex flex-col justify-center">
+            <span className="text-sm font-bold text-slate-100 tracking-tight leading-tight">HUMANITARIAN</span>
+            <span className="text-[10px] text-emerald-500 font-bold tracking-widest leading-none mt-0.5">OPS CENTER</span>
+          </div>
+        </div>
+
+        {/* Navigation Links */}
+        <nav className="flex-1 flex flex-col gap-2">
+          <NavLink 
+            to="/" 
+            className={({ isActive }) => 
+              `flex items-center h-12 transition-all duration-300 ease-in-out mx-3 rounded-xl overflow-hidden ${
+                isActive 
+                  ? "bg-slate-800 text-emerald-400" 
+                  : "text-slate-400 hover:bg-slate-800 hover:text-slate-100"
+              }`
+            }
+          >
+            <div className="w-14 flex items-center justify-center flex-shrink-0">
+              <LayoutDashboard size={22} />
+            </div>
+            <span className="opacity-0 w-0 overflow-hidden group-hover:w-auto group-hover:opacity-100 whitespace-nowrap transition-all duration-300 font-semibold text-sm">
+              Visão Geral
+            </span>
+          </NavLink>
+          <NavLink 
+            to="/admin" 
+            className={({ isActive }) => 
+              `flex items-center h-12 transition-all duration-300 ease-in-out mx-3 rounded-xl overflow-hidden ${
+                isActive 
+                  ? "bg-slate-800 text-emerald-400" 
+                  : "text-slate-400 hover:bg-slate-800 hover:text-slate-100"
+              }`
+            }
+          >
+            <div className="w-14 flex items-center justify-center flex-shrink-0">
+              <Settings size={22} />
+            </div>
+            <span className="opacity-0 w-0 overflow-hidden group-hover:w-auto group-hover:opacity-100 whitespace-nowrap transition-all duration-300 font-semibold text-sm">
+              Administração
+            </span>
+          </NavLink>
+        </nav>
+
+        {/* Bottom Actions */}
+        <div className="mt-auto flex flex-col gap-2">
+          <button className="flex items-center h-12 transition-all duration-300 ease-in-out mx-3 rounded-xl overflow-hidden text-slate-400 hover:bg-slate-800 hover:text-slate-100">
+            <div className="w-14 flex items-center justify-center flex-shrink-0">
+              <HelpCircle size={22} />
+            </div>
+            <span className="opacity-0 w-0 overflow-hidden group-hover:w-auto group-hover:opacity-100 whitespace-nowrap transition-all duration-300 font-semibold text-sm">
+              Suporte
+            </span>
+          </button>
+          <button className="flex items-center h-12 transition-all duration-300 ease-in-out mx-3 rounded-xl overflow-hidden text-slate-400 hover:bg-slate-800 hover:text-slate-100">
+            <div className="w-14 flex items-center justify-center flex-shrink-0">
+              <LogOut size={22} />
+            </div>
+            <span className="opacity-0 w-0 overflow-hidden group-hover:w-auto group-hover:opacity-100 whitespace-nowrap transition-all duration-300 font-semibold text-sm">
+              Sair
+            </span>
+          </button>
+        </div>
       </aside>
     </>
   );
