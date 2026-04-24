@@ -52,19 +52,19 @@ export default function Admin() {
   }
 
   async function fetchSubscribers() {
-    const { data } = await supabase.from("subscribers").select("*").order("created_at", { ascending: false });
+    const { data } = await supabase.from("team_subscribers").select("*").order("created_at", { ascending: false });
     if (data) setSubscribers(data);
   }
 
   async function addSubscriber() {
     if (!newSub) return;
-    await supabase.from("subscribers").insert([{ email: newSub }]);
+    await supabase.from("team_subscribers").insert([{ email: newSub }]);
     setNewSub("");
     fetchSubscribers();
   }
 
   async function deleteSubscriber(id: string) {
-    await supabase.from("subscribers").delete().eq("id", id);
+    await supabase.from("team_subscribers").delete().eq("id", id);
     fetchSubscribers();
   }
 
@@ -117,18 +117,18 @@ export default function Admin() {
               </ul>
             </div>
 
-            {/* Assinantes */}
+            {/* Assinantes / Equipe de Alertas */}
             <div className="bg-surface-container-low border border-surface-container-highest rounded p-card-padding">
-              <h2 className="font-headline-md text-on-surface mb-4">Gestão de Assinantes (E-mail)</h2>
+              <h2 className="font-headline-md text-on-surface mb-4">Equipe de Alertas</h2>
               <div className="flex gap-2 mb-4">
                 <input 
                   type="email" 
-                  placeholder="E-mail do operador" 
+                  placeholder="E-mail do agente" 
                   className="bg-surface border border-outline-variant p-2 rounded text-on-surface flex-1"
                   value={newSub}
                   onChange={e => setNewSub(e.target.value)}
                 />
-                <button onClick={addSubscriber} className="bg-primary text-on-primary px-4 rounded font-bold">Add</button>
+                <button onClick={addSubscriber} className="bg-primary text-on-primary px-4 rounded font-bold">Adicionar</button>
               </div>
               <ul className="space-y-2 max-h-64 overflow-y-auto">
                 {subscribers.map(s => (
@@ -137,7 +137,7 @@ export default function Admin() {
                     <button 
                       onClick={() => deleteSubscriber(s.id)}
                       className="text-error hover:bg-error/10 p-2 rounded transition-colors"
-                      title="Excluir assinante"
+                      title="Excluir agente"
                     >
                       <Trash2 size={18} />
                     </button>

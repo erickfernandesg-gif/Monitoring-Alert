@@ -95,13 +95,12 @@ export async function runCronJob() {
       continue;
     }
 
-    // Fetch Subscribers for Humanitarian Response Team
-    const { data: subscribers } = await supabaseAdmin
-      .from("subscribers")
-      .select("email")
-      .eq("active", true);
+    // Fetch Subscribers for Humanitarian Response Team (Broadcast)
+    const { data: teamSubscribers } = await supabaseAdmin
+      .from("team_subscribers")
+      .select("email");
 
-    const emails = subscribers?.map((s) => s.email) || [];
+    const emails = teamSubscribers?.map((s) => s.email) || [];
 
     if (emails.length > 0) {
       console.log(`Disparando push/emails para equipe de resposta rápida (${emails.length} agentes)...`);

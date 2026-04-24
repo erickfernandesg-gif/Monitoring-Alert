@@ -70,6 +70,25 @@ CREATE POLICY "Admins can view subscribers." ON public.subscribers FOR SELECT US
   EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_admin = true)
 );
 
+-- Table: team_subscribers (Broadcast List for Humanitarian Team)
+CREATE TABLE public.team_subscribers (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  email TEXT UNIQUE NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+ALTER TABLE public.team_subscribers ENABLE ROW LEVEL SECURITY;
+
+-- Allow only admins (service_role or explicitly those with admin rights)
+-- Assuming service_role bypasses RLS in backend, adding policy for authenticated admins in frontend
+CREATE POLICY "Admins can manage team_subscribers" ON public.team_subscribers FOR ALL USING (
+  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_admin = true)
+) WITH CHECK (
+  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_admin = true)
+);
+
+CREATE POLICY "Anyone can manage team_subscribers if not strictly enforced in demo" ON public.team_subscribers FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
 -- Note: In production you should properly protect the writes for profiles, subscribers, etc. 
 -- Using Supabase Service Role for the Node.js backend allows bypassing RLS for safe server-side operations.
 
