@@ -100,9 +100,11 @@ export async function runCronJob() {
       .from("team_subscribers")
       .select("email");
 
-    const emails = teamSubscribers?.map((s) => s.email) || [];
+    const emails = teamSubscribers?.map((sub) => sub.email) || [];
 
-    if (emails.length > 0) {
+    if (emails.length === 0) {
+      console.log(`Nenhum destinatário cadastrado na equipe de alertas. Pulando disparo de e-mails para ${alert.city}.`);
+    } else {
       console.log(`Disparando push/emails para equipe de resposta rápida (${emails.length} agentes)...`);
       const emailSent = await sendAlertEmail(emails, insertedAlert);
       

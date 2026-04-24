@@ -94,3 +94,7 @@ CREATE POLICY "Anyone can manage team_subscribers if not strictly enforced in de
 
 CREATE INDEX idx_alerts_log_region_type ON public.alerts_log (region, disaster_type);
 CREATE INDEX idx_alerts_log_created_at ON public.alerts_log (created_at);
+
+DROP POLICY IF EXISTS "Admins can manage team_subscribers" ON public.team_subscribers;
+DROP POLICY IF EXISTS "Anyone can manage team_subscribers if not strictly enforced in demo" ON public.team_subscribers;
+CREATE POLICY "Acesso temporário total" ON public.team_subscribers FOR ALL USING (true) WITH CHECK (true);

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import Sidebar from "../components/Sidebar";
 import { supabase } from "../lib/supabase";
 import { PageTransition } from "../components/PageTransition";
-import { Trash2 } from "lucide-react";
+import { Trash2, Edit2 } from "lucide-react";
 
 export default function Admin() {
   const [isAdmin, setIsAdmin] = useState(false);
@@ -13,6 +13,7 @@ export default function Admin() {
 
   const [subscribers, setSubscribers] = useState<any[]>([]);
   const [newSub, setNewSub] = useState("");
+  const [editingSubId, setEditingSubId] = useState<string | null>(null);
 
   const [logs, setLogs] = useState<any[]>([]);
 
@@ -52,19 +53,64 @@ export default function Admin() {
   }
 
   async function fetchSubscribers() {
-    const { data } = await supabase.from("team_subscribers").select("*").order("created_at", { ascending: false });
-    if (data) setSubscribers(data);
+    const { data, error } = await supabase.from("team_subscribers").select("*").order("created_at", { ascending: false });
+    if (error) {
+       console.error("Erro ao carregar e-mails:", error);
+    } else if (data) {
+       setSubscribers(data);
+    }
   }
 
-  async function addSubscriber() {
+  async function saveSubscriber() {
     if (!newSub) return;
-    await supabase.from("team_subscribers").insert([{ email: newSub }]);
+    
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newSub)) {
+      alert("Por favor, insira um endereço de e-mail válido.");
+      return;
+    }
+
+    if (editingSubId) {
+      const { error } = await supabase.from("team_subscribers").update({ email: newSub }).eq("id", editingSubId);
+      if (error) {
+        console.error("Error updating subscriber:", error);
+        alert(`Erro ao atualizar e-mail: ${error.message} \n\nVocê já criou a tabela 'team_subscribers' no Supabase?`);
+        return;
+      }
+      setEditingSubId(null);
+    } else {
+      const { error } = await supabase.from("team_subscribers").insert([{ email: newSub }]);
+      if (error) {
+        console.error("Error inserting subscriber:", error);
+        alert(`Erro ao adicionar e-mail: ${error.message} \n\nVocê já criou a tabela 'team_subscribers' no Supabase?`);
+        return;
+      }
+    }
+    
     setNewSub("");
     fetchSubscribers();
   }
 
+  function editSubscriber(sub: any) {
+    setNewSub(sub.email);
+    setEditingSubId(sub.id);
+  }
+
+  function cancelEditSubscriber() {
+    setNewSub("");
+    setEditingSubId(null);
+  }
+
   async function deleteSubscriber(id: string) {
-    await supabase.from("team_subscribers").delete().eq("id", id);
+    if (!confirm("Tem certeza que deseja excluir este e-mail?")) return;
+    
+    const { error } = await supabase.from("team_subscribers").delete().eq("id", id);
+    if (error) {
+       console.error("Error deleting subscriber:", error);
+       alert(`Erro ao excluir: ${error.message}`);
+       return;
+    }
     fetchSubscribers();
   }
 
@@ -128,19 +174,33 @@ export default function Admin() {
                   value={newSub}
                   onChange={e => setNewSub(e.target.value)}
                 />
-                <button onClick={addSubscriber} className="bg-primary text-on-primary px-4 rounded font-bold">Adicionar</button>
+                {editingSubId && (
+                  <button onClick={cancelEditSubscriber} className="bg-surface-variant text-on-surface-variant px-4 rounded font-bold">Cancelar</button>
+                )}
+                <button onClick={saveSubscriber} className="bg-primary text-on-primary px-4 rounded font-bold">
+                  {editingSubId ? "Salvar" : "Adicionar"}
+                </button>
               </div>
               <ul className="space-y-2 max-h-64 overflow-y-auto">
                 {subscribers.map(s => (
                   <li key={s.id} className="flex justify-between items-center p-3 bg-surface border border-surface-container-highest rounded">
                     <span className="font-data-mono">{s.email}</span>
-                    <button 
-                      onClick={() => deleteSubscriber(s.id)}
-                      className="text-error hover:bg-error/10 p-2 rounded transition-colors"
-                      title="Excluir agente"
-                    >
-                      <Trash2 size={18} />
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button 
+                        onClick={() => editSubscriber(s)}
+                        className="text-primary hover:bg-primary/10 p-2 rounded transition-colors"
+                        title="Editar agente"
+                      >
+                        <Edit2 size={18} />
+                      </button>
+                      <button 
+                        onClick={() => deleteSubscriber(s.id)}
+                        className="text-error hover:bg-error/10 p-2 rounded transition-colors"
+                        title="Excluir agente"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
                   </li>
                 ))}
               </ul>
