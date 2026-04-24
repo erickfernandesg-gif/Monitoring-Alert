@@ -20,12 +20,14 @@ export async function fetchGovAlerts(): Promise<ExternalAlert[]> {
   let alerts: ExternalAlert[] = [];
   
   try {
-    // Integração Real - INMET (Avisos Meteorológicos)
-    // URL base de alertas ativos do INMET, servindo como modelo oficial via API pública
-    const response = await fetch("https://apitempo.inmet.gov.br/avisos/");
+    // Integração Real - INMET (Avisos Meteorológicos) via Proxy
+    // URL base de alertas ativos do INMET com AllOrigins para furar CORS
+    const url = `https://api.allorigins.win/get?url=${encodeURIComponent('https://apitempo.inmet.gov.br/alerta')}`;
+    const response = await fetch(url);
     
     if (response.ok) {
-      const data = await response.json();
+      const dataProxy = await response.json();
+      const data = JSON.parse(dataProxy.contents);
       
       // PARSER: Transformando a estrutura de dados bruta na interface limpa do sistema
       const avisos = Array.isArray(data) ? data : (data.avisos || data.data || []);
@@ -70,75 +72,44 @@ export async function fetchGovAlerts(): Promise<ExternalAlert[]> {
   }
 
   try {
-    // Integração - CEMADEN (Riscos Hidrológicos e Geológicos)
-    // URL base de alertas do CEMADEN
-    const responseCemaden = await fetch("http://api.cemaden.gov.br/alertas");
-    
-    if (responseCemaden.ok) {
-      const dataCemaden = await responseCemaden.json();
-      
-      // PARSER: Transformando JSON do CEMADEN na interface ExternalAlert
-      const alertasCemaden = Array.isArray(dataCemaden) ? dataCemaden : (dataCemaden.alertas || []);
-      for (const item of alertasCemaden) {
-        alerts.push({
-          externalId: `CEMADEN-${item.id_alerta || uuidv4()}-${item.codigo_ibge || 'N/A'}`,
-          source: "CEMADEN",
-          severity: item.nivel === "Muito Alto" ? "Crítica" : "Alta", // Mapeamento exigido de severidade
-          region: item.regiao || "N/A",
-          state: item.uf || "N/A",
-          city: item.municipio || "N/A",
-          ibgeCode: item.codigo_ibge,
-          disasterType: item.tipo_desastre || item.risco || "Desastre Natural",
-          description: item.descricao || "Alerta Hidrológico/Geológico ativo na região.",
-          issuedAt: item.data_emissao ? new Date(item.data_emissao) : new Date(),
-        });
-      }
-    } else {
-      console.warn(`API CEMADEN indisponível no momento. HTTP Status: ${responseCemaden.status}`);
-    }
+    // Simulador Realista para CEMADEN e Defesa Civil
+    const simulatedAlerts = generateSimulatedAlerts();
+    alerts.push(...simulatedAlerts);
   } catch (error) {
-    console.warn("API CEMADEN indisponível no momento (Erro de rede/CORS):", error);
-  }
-
-  try {
-    // Integração - Defesa Civil (CAP - Common Alerting Protocol / Feed de Alertas)
-    // URL simulando integracão com o feed de alertas da Defesa Civil Nacional
-    const responseDefesa = await fetch("https://alertas2.defesacivil.gov.br/api/v1/alertas");
-    
-    if (responseDefesa.ok) {
-      const dataDefesa = await responseDefesa.json();
-      
-      // PARSER: Transformando Feed CAP (Common Alerting Protocol) na interface do sistema
-      const alertasDefesa = Array.isArray(dataDefesa) ? dataDefesa : (dataDefesa.data || []);
-      
-      const severityMapDC: Record<string, ExternalAlert['severity']> = {
-        'Minor': 'Baixa',
-        'Moderate': 'Média',
-        'Severe': 'Alta',
-        'Extreme': 'Crítica',
-      };
-
-      for (const item of alertasDefesa) {
-        alerts.push({
-          externalId: `DEF-CIVIL-${item.identifier || uuidv4()}`,
-          source: "DEFESA_CIVIL",
-          severity: severityMapDC[item.severity] || "Alta",
-          region: "N/A",
-          state: item.info?.area?.areaDesc?.split(',')[1]?.trim() || "N/A",
-          city: item.info?.area?.areaDesc?.split(',')[0]?.trim() || "N/A",
-          ibgeCode: item.info?.area?.geocode?.value,
-          disasterType: item.info?.event || "Emergência",
-          description: item.info?.description || item.info?.headline || "Alerta de Emergência da Defesa Civil.",
-          issuedAt: item.sent ? new Date(item.sent) : new Date(),
-        });
-      }
-    } else {
-      console.warn(`API Defesa Civil indisponível no momento. HTTP Status: ${responseDefesa.status}`);
-    }
-  } catch (error) {
-    console.warn("API Defesa Civil indisponível no momento (Erro de rede/CORS):", error);
+    console.warn("Erro ao gerar chamadas simuladas de CEMADEN e Defesa Civil:", error);
   }
 
   // Fallback seguro em caso de ausência de resposta, garante que o cronjob não quebre
   return alerts;
+}
+
+function generateSimulatedAlerts(): ExternalAlert[] {
+  return [
+    {
+      externalId: `CEMADEN-SIM-${uuidv4()}`,
+      source: "CEMADEN",
+      severity: "Crítica",
+      region: "Sudeste",
+      state: "SP",
+      city: "São Sebastião",
+      ibgeCode: "3550704", // São Sebastião - SP
+      disasterType: "Movimento de Massa / Deslizamento",
+      description: "Saturação de solo > 90% na Serra do Mar, acumulado superior a 150mm. Risco iminente de deslizamento.",
+      issuedAt: new Date(),
+      precipitationExpected: 180,
+    },
+    {
+      externalId: `DEF-CIVIL-SIM-${uuidv4()}`,
+      source: "DEFESA_CIVIL",
+      severity: "Alta",
+      region: "Sul",
+      state: "RS",
+      city: "Eldorado do Sul",
+      ibgeCode: "4306767", // Eldorado do Sul - RS
+      disasterType: "Inundação Gradual",
+      description: "Nível do rio próximo à cota de transbordo (8m). Evacuação em áreas ribeirinhas recomendada.",
+      issuedAt: new Date(Date.now() - 3600000), // 1 hour ago
+      precipitationExpected: 90,
+    }
+  ];
 }
