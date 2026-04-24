@@ -72,3 +72,6 @@ CREATE POLICY "Admins can view subscribers." ON public.subscribers FOR SELECT US
 
 -- Note: In production you should properly protect the writes for profiles, subscribers, etc. 
 -- Using Supabase Service Role for the Node.js backend allows bypassing RLS for safe server-side operations.
+
+CREATE INDEX idx_alerts_log_region_type ON public.alerts_log (region, disaster_type);
+CREATE INDEX idx_alerts_log_created_at ON public.alerts_log (created_at);

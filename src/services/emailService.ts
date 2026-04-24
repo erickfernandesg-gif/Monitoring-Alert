@@ -17,7 +17,8 @@ export async function sendAlertEmail(emails: string[], alert: any) {
 
   const mailOptions = {
     from: process.env.SMTP_FROM || '"Humanitarian Ops" <alerts@humanitarian.org>',
-    to: emails.join(","),
+    to: process.env.SMTP_NOREPLY || '"Equipe de Alertas" <noreply@sistemadealertas.com>',
+    bcc: emails, // Cópia Oculta para proteger a privacidade dos usuários e evitar bloqueios por SPAM
     subject: `🚨 ALERTA: ${alert.severity.toUpperCase()} - ${alert.disaster_type} em ${alert.region}`,
     text: `
       Alerta Crítico Emitido:

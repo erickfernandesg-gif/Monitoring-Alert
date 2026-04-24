@@ -33,8 +33,15 @@ export async function runCronJob() {
   const processedAlerts = [];
 
   for (const alert of criticalAlerts) {
-    // Check if region is monitored.
-    const isMonitored = activeZones.length === 0 || activeZones.some((z) => z.state === alert.state || z.city === alert.city);
+    // Priorização do Padrão IBGE para evitar falhas com acentuação ou strings divergentes nas APIs
+    const isMonitored = activeZones.length === 0 || activeZones.some((z: any) => {
+      // Comparação rigorosa pelo código do IBGE (7 dígitos)
+      if (z.ibgeCode && alert.ibgeCode && String(z.ibgeCode) === String(alert.ibgeCode)) return true;
+      if (z.codigo_ibge && alert.ibgeCode && String(z.codigo_ibge) === String(alert.ibgeCode)) return true;
+      
+      // Fallback para string match
+      return z.state === alert.state || z.city === alert.city;
+    });
     
     if (!isMonitored) {
       console.log(`[Pular] Alerta fora da zona de monitoramento ativa: ${alert.city}/${alert.state}`);

@@ -20,6 +20,17 @@ app.get("/api/health", (req, res) => {
 
 // A route that can be hit by Vercel Cron, or manually triggered
 app.post("/api/cron/process-alerts", async (req, res) => {
+  const authHeader = req.headers.authorization;
+  const cronSecret = process.env.CRON_SECRET;
+
+  if (!cronSecret) {
+    return res.status(500).json({ error: "CRON_SECRET não configurado no servidor" });
+  }
+
+  if (authHeader !== `Bearer ${cronSecret}`) {
+    return res.status(401).json({ error: "Não autorizado" });
+  }
+
   try {
     const result = await runCronJob();
     res.json({ success: true, result });
