@@ -18,22 +18,54 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
+async function fetchWithRetry(url: string, retries = 3, backoff = 1000): Promise<Response> {
+  let attempt = 0;
+  while (attempt < retries) {
+    try {
+      const response = await fetch(url);
+      if (response.ok) return response;
+      console.warn(`[Proxy-gov] Falha na tentativa ${attempt + 1}. HTTP Status: ${response.status}`);
+      if (attempt === retries - 1) return response;
+    } catch (error: any) {
+      if (error?.cause?.code === 'ENOTFOUND') {
+        console.warn(`[Proxy-gov] Domínio não encontrado: ${url}`);
+        throw error;
+      }
+      console.warn(`[Proxy-gov] Erro de rede na tentativa ${attempt + 1}:`, error);
+      if (attempt === retries - 1) throw error;
+    }
+    const delay = backoff * Math.pow(2, attempt);
+    await new Promise(res => setTimeout(res, delay));
+    attempt++;
+  }
+  throw new Error("Maximum retries reached");
+}
+
 // A route that can be hit by Vercel Cron, or manually triggered
 app.get("/api/proxy-gov", async (req, res) => {
   try {
-    const inmetResponse = await fetch("https://apitempo.inmet.gov.br/alerta");
+    const targetUrl = req.query.url as string;
+    
+    if (!targetUrl) {
+      return res.status(400).json({ error: "Parâmetro 'url' não fornecido" });
+    }
+
+    const inmetResponse = await fetchWithRetry(targetUrl);
     if (!inmetResponse.ok) {
-      return res.status(inmetResponse.status).json({ error: `Erro ${inmetResponse.status}: Servidor do INMET sobrecarregado ou indisponível` });
+      return res.status(inmetResponse.status).json({ error: `Erro ${inmetResponse.status}: Servidor do órgão governamental sobrecarregado ou indisponível` });
     }
     
     const contentType = inmetResponse.headers.get("content-type");
     if (!contentType || !contentType.includes("application/json")) {
-      return res.status(502).json({ error: "Erro 502: Resposta do INMET não é um JSON válido" });
+      return res.status(502).json({ error: "Erro 502: Resposta do servidor não é um JSON válido" });
     }
     
     const data = await inmetResponse.json();
     res.json(data);
   } catch (error: any) {
+    if (error?.cause?.code === 'ENOTFOUND') {
+      return res.status(404).json({ error: "API indisponível (Domínio não encontrado)" });
+    }
     console.error("Internal Proxy Error:", error);
     res.status(500).json({ error: error.message });
   }

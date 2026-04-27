@@ -32,7 +32,7 @@ export async function fetchPressNews(): Promise<NewsArticle[]> {
 
 export interface ExternalAlert {
   externalId: string;
-  source: "INMET" | "CEMADEN" | "DEFESA_CIVIL" | "NASA_FIRMS" | "ANA";
+  source: "INMET" | "CEMADEN" | "DEFESA_CIVIL" | "NASA_FIRMS" | "ANA" | "USGS" | "GDACS";
   severity: "Baixa" | "Média" | "Alta" | "Crítica";
   region: string;
   state: string;
@@ -48,16 +48,37 @@ export interface ExternalAlert {
   radiusKm?: number;
 }
 
+const geocodingCache = new Map<string, { city?: string; state?: string }>();
+
+function sleep(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function getProxyUrl(targetUrl: string) {
+  const baseUrl = typeof window === 'undefined' ? 'http://127.0.0.1:3000' : '';
+  return `${baseUrl}/api/proxy-gov?url=${encodeURIComponent(targetUrl)}`;
+}
+
 async function reverseGeocode(lat: number, lon: number): Promise<{ city?: string; state?: string }> {
+  // Arredondar coordenadas para criar chave de cache. 3 casas dec = aprox 110 metros
+  const cacheKey = `${lat.toFixed(3)},${lon.toFixed(3)}`;
+  if (geocodingCache.has(cacheKey)) {
+    return geocodingCache.get(cacheKey)!;
+  }
+
   try {
+    // Respeita o limite de rate-limiting do Nominatim (max 1/segundo)
+    await sleep(1500);
     const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=10&addressdetails=1`);
     if (!response.ok) return {};
     const data = await response.json();
     if (data && data.address) {
-      return {
+      const result = {
         city: data.address.city || data.address.town || data.address.village || data.address.municipality,
         state: data.address.state
       };
+      geocodingCache.set(cacheKey, result);
+      return result;
     }
   } catch (e) {
     console.warn("Falha no reverse geocode", e);
@@ -66,71 +87,32 @@ async function reverseGeocode(lat: number, lon: number): Promise<{ city?: string
 }
 
 export async function fetchGovAlerts(): Promise<ExternalAlert[]> {
-  console.log("Executando pipeline de predição e integração com INMET e CEMADEN...");
-  let alerts: ExternalAlert[] = [];
+  console.log("Executando pipeline de predição e integração com APIs Governamentais...");
   
-  let inmetData: any = null;
+  // Paraleliza ou executa em sequência
+  const [inmetAlerts, usgsAlerts, gdacsAlerts] = await Promise.all([
+     fetchInmetAlerts(),
+     fetchUSGSEarthquakes(),
+     fetchGDACSAlerts()
+  ]);
+
+  return [...inmetAlerts, ...usgsAlerts, ...gdacsAlerts];
+}
+
+async function fetchInmetAlerts(): Promise<ExternalAlert[]> {
+  const alerts: ExternalAlert[] = [];
   const inmetUrl = 'https://apitempo.inmet.gov.br/alerta';
 
-  // Strategy 1: Backend Route (Node.js direct fetch, no CORS)
   try {
-    console.log("Tentando proxy interno de backend (/api/proxy-gov)...");
-    const response0 = await fetch('/api/proxy-gov');
-    const contentType = response0.headers.get('content-type');
-    
-    if (response0.ok && contentType && contentType.includes('application/json')) {
-      inmetData = await response0.json();
-    } else {
-      console.warn(`[Proxy Interno] Falha. HTTP Status: ${response0.status}. Content-Type: ${contentType}`);
+    const response = await fetch(getProxyUrl(inmetUrl));
+    if (!response.ok) {
+      console.warn(`[INMET FETCH WARNING]: HTTP Status: ${response.status}`);
+      return alerts;
     }
-  } catch (error) {
-    console.warn("Erro no Proxy Interno (/api/proxy-gov):", error);
-  }
 
-  // Strategy 2: Proxy 1 (AllOrigins)
-  if (!inmetData) {
-    try {
-      console.log("Tentando proxy 1 (AllOrigins)...");
-      const url1 = `https://api.allorigins.win/get?url=${encodeURIComponent(inmetUrl)}`;
-      const response1 = await fetch(url1);
-      
-      const contentType = response1.headers.get('content-type');
-      if (response1.ok && contentType && contentType.includes('application/json')) {
-        const dataProxy = await response1.json();
-        if (dataProxy && dataProxy.contents) {
-          try {
-            inmetData = JSON.parse(dataProxy.contents);
-          } catch (parseError) {
-            console.warn("[Proxy 1] Erro ao parsear JSON do INMET (Pode ser um HTML de erro do AllOrigins):", String(dataProxy.contents).substring(0, 100));
-          }
-        }
-      } else {
-        console.warn(`[Proxy 1] Falha. HTTP Status: ${response1.status}. Content-Type: ${contentType}`);
-      }
-    } catch (error) {
-      console.warn("Erro no Proxy 1 (AllOrigins):", error);
-    }
-  }
+    const inmetData = await response.json();
+    if (!inmetData) return alerts;
 
-  // Strategy 3: Proxy 2 Fallback (corsproxy.io)
-  if (!inmetData) {
-    try {
-      console.log("Tentando proxy secundário (corsproxy.io)...");
-      const url2 = `https://corsproxy.io/?${encodeURIComponent(inmetUrl)}`;
-      const response2 = await fetch(url2);
-      
-      const contentType = response2.headers.get("content-type");
-      if (response2.ok && contentType && contentType.includes("application/json")) {
-         inmetData = await response2.json();
-      } else {
-         console.warn(`[Proxy 2] Falha. Status: ${response2.status}. Tipo: ${contentType}`);
-      }
-    } catch (e) {
-      console.warn("Erro no Proxy 2 (corsproxy.io):", e);
-    }
-  }
-
-  if (inmetData) {
     const avisos = Array.isArray(inmetData) ? inmetData : (inmetData.avisos || inmetData.data || []);
     for (const item of avisos) {
       if (!item.municipios && !item.geocode && (!item.latitude || !item.longitude)) continue;
@@ -184,73 +166,118 @@ export async function fetchGovAlerts(): Promise<ExternalAlert[]> {
         });
       }
     }
+  } catch (error: any) {
+    console.error("[INMET FETCH ERROR]:", error.message);
   }
-
-  // Contingência se ambas as chamadas e o parsing falharem ou retornarem vazio (e antes de adicionar simulados)
-  const inmetSuccessCount = alerts.length;
-
-  try {
-    const simulatedAlerts = generateSimulatedAlerts();
-    alerts.push(...simulatedAlerts);
-  } catch (error) {
-    console.warn("Erro ao gerar chamadas simuladas de CEMADEN e Defesa Civil:", error);
-  }
-
-  if (alerts.length === 0) {
-    alerts.push({
-      externalId: `SYSTEM-FALLBACK-${new Date().toISOString()}`,
-      source: "INMET", // Using a valid source type, INMET is fine as fallback source
-      severity: "Baixa",
-      region: "Nacional",
-      state: "BR",
-      city: "Múltiplas (Monitoramento Indireto)",
-      ibgeCode: "0000000",
-      disasterType: "Instabilidade em APIs de Origem",
-      description: "Aviso: APIs governamentais instáveis. O monitoramento continua ativo via Radar de Imprensa e Sensores Locais.",
-      issuedAt: new Date(),
-      latitude: -15.7801,
-      longitude: -47.9292,
-      radiusKm: 10
-    });
-  }
-
   return alerts;
 }
 
-function generateSimulatedAlerts(): ExternalAlert[] {
-  const nowStr = new Date().toISOString();
-  return [
-    {
-      externalId: `CEMADEN-São-Sebastião-Deslizamento-${nowStr.split('T')[0]}`,
-      source: "CEMADEN",
-      severity: "Crítica",
-      region: "Sudeste",
-      state: "SP",
-      city: "São Sebastião",
-      ibgeCode: "3550704", 
-      disasterType: "Movimento de Massa / Deslizamento",
-      description: "Saturação de solo > 90% na Serra do Mar, acumulado superior a 150mm. Risco iminente de deslizamento.",
-      issuedAt: new Date(),
-      precipitationExpected: 180,
-      latitude: -23.7604,
-      longitude: -45.4054,
-      radiusKm: 12
-    },
-    {
-      externalId: `DEF-CIVIL-Eldorado-do-Sul-Inundação-${nowStr.split('T')[0]}`,
-      source: "DEFESA_CIVIL",
-      severity: "Alta",
-      region: "Sul",
-      state: "RS",
-      city: "Eldorado do Sul",
-      ibgeCode: "4306767", 
-      disasterType: "Inundação Gradual",
-      description: "Nível do rio próximo à cota de transbordo (8m). Evacuação em áreas ribeirinhas recomendada.",
-      issuedAt: new Date(Date.now() - 3600000), 
-      precipitationExpected: 90,
-      latitude: -30.0028,
-      longitude: -51.3204,
-      radiusKm: 8
+async function fetchUSGSEarthquakes(): Promise<ExternalAlert[]> {
+  const alerts: ExternalAlert[] = [];
+  try {
+    // A API do USGS é pública, confere CORS e não precisa de chave nem proxy interno.
+    // Retorna todos os terremotos do mundo com M > 4.5 nas últimas 24h.
+    const usgsUrl = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_day.geojson"; 
+    const response = await fetch(usgsUrl);
+    
+    if (response.ok) {
+       const data = await response.json();
+       if (data && data.features) {
+         for (const feature of data.features) {
+           const [lon, lat] = feature.geometry.coordinates;
+           
+           // Filtro para focar no Brasil e arredores:
+           // O Brasil fica aprox entre Lat: 5 a -34, Lon: -74 a -34.
+           if (lat < 5 && lat > -34 && lon < -34 && lon > -74) {
+             const magnitude = feature.properties.mag;
+             const severity = magnitude >= 6.0 ? "Crítica" : (magnitude >= 5.0 ? "Alta" : "Média");
+             
+             // Usa geocoding reverso para encontrar a cidade/estado do tremor mais próximo
+             const geo = await reverseGeocode(lat, lon);
+             
+             alerts.push({
+                externalId: `USGS-${feature.id}`,
+                source: "USGS",
+                severity: severity,
+                region: geo.state ? "Nacional/Fronteira" : "Oceano/Desconhecido",
+                state: geo.state || "N/A",
+                city: geo.city || feature.properties.place || "N/A",
+                disasterType: "Terremoto / Tremor de Terra",
+                description: `Tremor de magnitude ${magnitude} registrado. Local de referência: ${feature.properties.place}. (Fonte: USGS)`,
+                issuedAt: new Date(feature.properties.time),
+                latitude: lat,
+                longitude: lon,
+                radiusKm: magnitude * 15 // Raio aproximado de impacto baseado na escala
+             });
+           }
+         }
+       }
     }
-  ];
+  } catch (error: any) {
+    console.error("[USGS FETCH ERROR]:", error.message);
+  }
+  return alerts;
 }
+
+async function fetchGDACSAlerts(): Promise<ExternalAlert[]> {
+  const alerts: ExternalAlert[] = [];
+  try {
+    // GDACS possui endpoint JSON gratuito e público mundial para Flood, Cyclones, Earthquakes, etc
+    const gdacsUrl = "https://www.gdacs.org/gdacsapi/api/events/geteventlist/SEARCH?eventlist=EQ,TC,FL,VO,DR,FW";
+    const response = await fetch(gdacsUrl);
+    
+    if (response.ok) {
+       const data = await response.json();
+       if (data && data.features) {
+         for (const feature of data.features) {
+           const [lon, lat] = feature.geometry.coordinates;
+           
+           // Se quisermos apenas Brasil, filtramos pela BBox (descomente para focar)
+           // if (!(lat < 5 && lat > -34 && lon < -34 && lon > -74)) continue;
+
+           const severityConfig: Record<string, "Baixa"|"Média"|"Alta"|"Crítica"> = {
+             "Orange": "Alta",
+             "Red": "Crítica",
+             "Green": "Baixa"
+           };
+
+           // Mapeamento GDACS alert level
+           let severity = severityConfig[feature.properties.alertlevel] || "Média";
+           
+           // Evita spam de 'green' no GDACS (são muitos alertas pequenos verdes noutros continentes)
+           if (severity === "Baixa" && feature.properties.eventtype === "EQ") continue;
+
+           const eventNames: Record<string, string> = {
+            "EQ": "Terremoto",
+            "TC": "Ciclone Tropical",
+            "FL": "Inundação",
+            "VO": "Vulcão",
+            "DR": "Seca",
+            "FW": "Incêndio Florestal",
+            "WF": "Incêndio Florestal"
+           };
+
+           const propertyEventType = feature.properties.eventtype;
+           alerts.push({
+              externalId: `GDACS-${feature.properties.eventid}`,
+              source: "GDACS" as any, 
+              severity,
+              region: "Internacional/Nacional",
+              state: feature.properties.country || "N/A",
+              city: feature.properties.name || "N/A",
+              disasterType: eventNames[propertyEventType] || propertyEventType,
+              description: feature.properties.description || "Alerta de desastre global transmitido pelo Global Disaster Alert and Coordination System.",
+              issuedAt: new Date(feature.properties.fromdate),
+              latitude: lat,
+              longitude: lon,
+              radiusKm: 30 // GDACS reporta eventos massivos, raio simbólico.
+           });
+         }
+       }
+    }
+  } catch (error: any) {
+    console.error("[GDACS FETCH ERROR]:", error.message);
+  }
+  return alerts;
+}
+
