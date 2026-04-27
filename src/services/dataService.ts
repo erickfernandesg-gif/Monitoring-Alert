@@ -56,8 +56,11 @@ function sleep(ms: number) {
 }
 
 function getProxyUrl(targetUrl: string) {
-  const baseUrl = typeof window === 'undefined' ? 'http://127.0.0.1:3000' : '';
-  return `${baseUrl}/api/proxy-gov?url=${encodeURIComponent(targetUrl)}`;
+  if (typeof window === 'undefined') {
+    // No server side, CORS isn't an issue. Fetch directly.
+    return targetUrl;
+  }
+  return `/api/proxy-gov?url=${encodeURIComponent(targetUrl)}`;
 }
 
 async function reverseGeocode(lat: number, lon: number): Promise<{ city?: string; state?: string; countryCode?: string }> {
@@ -108,6 +111,12 @@ async function fetchInmetAlerts(): Promise<ExternalAlert[]> {
     if (!response.ok) {
       console.warn(`[INMET FETCH WARNING]: HTTP Status: ${response.status}`);
       return alerts;
+    }
+
+    const contentType = response.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+       console.warn("[INMET API] Resposta não-JSON recebida. Abortando fetch atual.");
+       return [];
     }
 
     const inmetData = await response.json();
