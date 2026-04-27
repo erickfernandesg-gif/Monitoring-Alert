@@ -10,7 +10,8 @@ export interface NewsArticle {
 
 export async function fetchPressNews(): Promise<NewsArticle[]> {
   try {
-    const url = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent('https://news.google.com/rss/search?q=desastres+naturais+Brasil+OR+chuvas+enchentes+OR+defesa+civil&hl=pt-BR&gl=BR&ceid=BR:pt-419')}`;
+    const query = '"desastre natural" OR "enchente" OR "deslizamento" site:br';
+    const url = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(`https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=pt-BR&gl=BR&ceid=BR:pt-419`)}`;
     const response = await fetch(url);
     if (!response.ok) return [];
     
@@ -48,7 +49,7 @@ export interface ExternalAlert {
   radiusKm?: number;
 }
 
-const geocodingCache = new Map<string, { city?: string; state?: string }>();
+const geocodingCache = new Map<string, { city?: string; state?: string; countryCode?: string }>();
 
 function sleep(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -59,7 +60,7 @@ function getProxyUrl(targetUrl: string) {
   return `${baseUrl}/api/proxy-gov?url=${encodeURIComponent(targetUrl)}`;
 }
 
-async function reverseGeocode(lat: number, lon: number): Promise<{ city?: string; state?: string }> {
+async function reverseGeocode(lat: number, lon: number): Promise<{ city?: string; state?: string; countryCode?: string }> {
   // Arredondar coordenadas para criar chave de cache. 3 casas dec = aprox 110 metros
   const cacheKey = `${lat.toFixed(3)},${lon.toFixed(3)}`;
   if (geocodingCache.has(cacheKey)) {
@@ -75,20 +76,19 @@ async function reverseGeocode(lat: number, lon: number): Promise<{ city?: string
     if (data && data.address) {
       const result = {
         city: data.address.city || data.address.town || data.address.village || data.address.municipality,
-        state: data.address.state
+        state: data.address.state,
+        countryCode: data.address.country_code
       };
       geocodingCache.set(cacheKey, result);
       return result;
     }
   } catch (e) {
-    console.warn("Falha no reverse geocode", e);
+    // silently fail
   }
   return {};
 }
 
 export async function fetchGovAlerts(): Promise<ExternalAlert[]> {
-  console.log("Executando pipeline de predição e integração com APIs Governamentais...");
-  
   // Paraleliza ou executa em sequência
   const [inmetAlerts, usgsAlerts, gdacsAlerts] = await Promise.all([
      fetchInmetAlerts(),
@@ -136,6 +136,9 @@ async function fetchInmetAlerts(): Promise<ExternalAlert[]> {
 
       if (municipios.length === 0 && item.latitude && item.longitude) {
          const geo = await reverseGeocode(Number(item.latitude), Number(item.longitude));
+         // Filtro geográfico Brasil Only
+         if (geo.countryCode && geo.countryCode.toLowerCase() !== 'br') continue;
+
          municipios = [{
            uf: geo.state || "N/A",
            nome_municipio: geo.city || "Município Desconhecido"
@@ -195,6 +198,9 @@ async function fetchUSGSEarthquakes(): Promise<ExternalAlert[]> {
              // Usa geocoding reverso para encontrar a cidade/estado do tremor mais próximo
              const geo = await reverseGeocode(lat, lon);
              
+             // Filtro geográfico Brasil Only
+             if (geo.countryCode && geo.countryCode.toLowerCase() !== 'br') continue;
+
              alerts.push({
                 externalId: `USGS-${feature.id}`,
                 source: "USGS",
@@ -232,8 +238,14 @@ async function fetchGDACSAlerts(): Promise<ExternalAlert[]> {
          for (const feature of data.features) {
            const [lon, lat] = feature.geometry.coordinates;
            
-           // Se quisermos apenas Brasil, filtramos pela BBox (descomente para focar)
-           // if (!(lat < 5 && lat > -34 && lon < -34 && lon > -74)) continue;
+           // Filtro inicial por bounding box aproximada do Brasil
+           if (!(lat < 5 && lat > -34 && lon < -34 && lon > -74)) continue;
+
+           // Checagem rigorosa de país
+           if (feature.properties.country && feature.properties.country.toLowerCase() !== 'brazil' && feature.properties.country.toLowerCase() !== 'brasil') {
+              const geo = await reverseGeocode(lat, lon);
+              if (geo.countryCode && geo.countryCode.toLowerCase() !== 'br') continue;
+           }
 
            const severityConfig: Record<string, "Baixa"|"Média"|"Alta"|"Crítica"> = {
              "Orange": "Alta",

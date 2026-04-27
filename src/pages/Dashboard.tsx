@@ -30,7 +30,14 @@ export default function Dashboard() {
   useEffect(() => {
     async function loadData() {
       const data = await fetchGovAlerts();
-      setAlerts(data);
+      // Filtro rigoroso: Apenas alertas com estado ou região válidos no Brasil. Se vier algo internacional ou sem UF, descarta
+      const filteredData = data.filter(alert => {
+         const nonBrIndicators = ['international', 'oceano', 'desconhecido', 'n/a', 'nacional/fronteira'];
+         if (alert.state && nonBrIndicators.includes(alert.state.toLowerCase())) return false;
+         if (alert.region && nonBrIndicators.includes(alert.region.toLowerCase()) && alert.region !== "Nacional/Fronteira") return false;
+         return true;
+      });
+      setAlerts(filteredData);
     }
     loadData();
     const interval = setInterval(loadData, 60000); // refresh every minute
@@ -189,14 +196,14 @@ export default function Dashboard() {
                   AO VIVO
                 </span>
               </div>
-              <div className="flex-1 overflow-y-auto p-3 grid grid-cols-1 lg:grid-cols-2 gap-3 content-start">
+              <div className="flex-1 overflow-y-auto p-2 flex flex-col gap-2 content-start">
                 {alerts.length === 0 ? (
-                  <div className="text-slate-500 text-sm text-center py-8 lg:col-span-2">Monitorando sistemas...</div>
+                  <div className="text-slate-500 text-sm text-center py-8">Monitorando sistemas...</div>
                 ) : null}
                 {alerts.map((alert) => (
                   <div 
                     key={alert.externalId} 
-                    className={`bg-white p-3 rounded-lg shadow-sm border border-gray-100 flex flex-col justify-between h-full cursor-pointer transition-all duration-200 group hover:shadow-md ${
+                    className={`bg-white p-2 rounded-lg shadow-sm border border-slate-100 flex items-center gap-3 cursor-pointer transition-all duration-200 group hover:shadow-md ${
                       alert.severity === 'Crítica' 
                         ? 'border-l-4 border-l-red-500 hover:border-red-300' 
                         : alert.severity === 'PREDICTIVE_WARNING'
@@ -207,40 +214,30 @@ export default function Dashboard() {
                     }`}
                     onClick={() => navigate(`/alert/${encodeURIComponent(alert.externalId)}`)}
                   >
-                    <div className="flex justify-between items-center mb-1 gap-2">
-                        <div className="flex items-center gap-1.5 min-w-0">
+                     <div className="flex-shrink-0">
                           {alert.disasterType.toLowerCase().includes('enchente') ? (
-                            <Waves size={14} className={`flex-shrink-0 ${alert.severity === 'Crítica' ? 'text-red-600' : alert.severity === 'PREDICTIVE_WARNING' ? 'text-purple-600' : alert.severity === 'Alta' ? 'text-orange-600' : 'text-yellow-600'}`} />
+                            <Waves size={18} className={`${alert.severity === 'Crítica' ? 'text-red-600 animate-pulse' : alert.severity === 'PREDICTIVE_WARNING' ? 'text-purple-600 animate-pulse' : alert.severity === 'Alta' ? 'text-orange-600' : 'text-yellow-600'}`} />
                           ) : alert.disasterType.toLowerCase().includes('tempestade') || alert.disasterType.toLowerCase().includes('chuva') ? (
-                            <CloudLightning size={14} className={`flex-shrink-0 ${alert.severity === 'Crítica' ? 'text-red-600' : alert.severity === 'PREDICTIVE_WARNING' ? 'text-purple-600' : alert.severity === 'Alta' ? 'text-orange-600' : 'text-yellow-600'}`} />
+                            <CloudLightning size={18} className={`${alert.severity === 'Crítica' ? 'text-red-600 animate-pulse' : alert.severity === 'PREDICTIVE_WARNING' ? 'text-purple-600 animate-pulse' : alert.severity === 'Alta' ? 'text-orange-600' : 'text-yellow-600'}`} />
                           ) : (
-                            <AlertTriangle size={14} className={`flex-shrink-0 ${alert.severity === 'Crítica' ? 'text-red-600' : alert.severity === 'PREDICTIVE_WARNING' ? 'text-purple-600' : alert.severity === 'Alta' ? 'text-orange-600' : 'text-yellow-600'}`} />
+                            <AlertTriangle size={18} className={`${alert.severity === 'Crítica' ? 'text-red-600 animate-pulse' : alert.severity === 'PREDICTIVE_WARNING' ? 'text-purple-600 animate-pulse' : alert.severity === 'Alta' ? 'text-orange-600' : 'text-yellow-600'}`} />
                           )}
-                          <span className="font-semibold text-slate-800 text-sm tracking-tight truncate">{alert.disasterType}</span>
-                        </div>
-                        <span className="text-[10px] font-medium text-slate-400 whitespace-nowrap flex-shrink-0">
+                     </div>
+                     <div className="flex-1 min-w-0">
+                       <div className="flex items-center gap-2">
+                         <span className="font-bold text-slate-800 text-sm truncate">{alert.disasterType}</span>
+                         <span className="text-xs font-bold text-blue-900 truncate">&bull; {alert.city}, {alert.state}</span>
+                       </div>
+                       <div className="text-xs text-slate-500 truncate">{alert.description}</div>
+                     </div>
+                     <div className="flex flex-col items-end flex-shrink-0 gap-1">
+                        <span className="text-[10px] font-medium text-slate-400 whitespace-nowrap">
                           {safeFormatDistanceToNow(alert.issuedAt)}
                         </span>
-                    </div>
-                    <div className="text-xs text-slate-600 mb-2 line-clamp-2">{alert.description}</div>
-                    <div className="flex items-center gap-1.5 text-[10px] mt-auto">
-                        {(alert.severity === 'Alta' || alert.severity === 'Crítica' || alert.severity === 'PREDICTIVE_WARNING') && (
-                          <span className={`px-1.5 py-0.5 rounded font-bold flex-shrink-0 ${
-                             alert.severity === 'Crítica' ? 'bg-red-100 text-red-700' : 
-                             alert.severity === 'PREDICTIVE_WARNING' ? 'bg-purple-100 text-purple-700' :
-                             'bg-orange-100 text-orange-700'
-                          }`}>
-                            {alert.severity === 'PREDICTIVE_WARNING' ? 'PREDICTIVO' : alert.severity}
-                          </span>
-                        )}
-                        <span className="flex items-center gap-0.5 text-slate-500 truncate">
-                          <MapPin size={10} className="flex-shrink-0" />
-                          <span className="truncate">{alert.city}, {alert.state}</span>
-                        </span>
-                        <span className="ml-auto font-bold tracking-wider uppercase text-slate-400 flex-shrink-0">
+                        <span className="font-bold tracking-wider uppercase text-[9px] text-slate-400">
                           {alert.source}
                         </span>
-                    </div>
+                     </div>
                   </div>
                 ))}
               </div>
