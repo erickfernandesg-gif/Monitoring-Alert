@@ -32,8 +32,8 @@ export async function fetchPressNews(): Promise<NewsArticle[]> {
 
 export interface ExternalAlert {
   externalId: string;
-  source: "INMET" | "CEMADEN" | "DEFESA_CIVIL" | "NASA_FIRMS" | "ANA" | "USGS" | "GDACS";
-  severity: "Baixa" | "Média" | "Alta" | "Crítica";
+  source: "INMET" | "CEMADEN" | "DEFESA_CIVIL" | "NASA_FIRMS" | "ANA" | "USGS" | "GDACS" | "INPE_PREDICTION" | "GEE_PREDICTION";
+  severity: "Baixa" | "Média" | "Alta" | "Crítica" | "PREDICTIVE_WARNING";
   region: string;
   state: string;
   city: string;
