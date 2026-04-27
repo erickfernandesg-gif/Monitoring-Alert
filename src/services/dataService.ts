@@ -72,28 +72,47 @@ export async function fetchGovAlerts(): Promise<ExternalAlert[]> {
   let inmetData: any = null;
   const inmetUrl = 'https://apitempo.inmet.gov.br/alerta';
 
+  // Strategy 1: Backend Route (Node.js direct fetch, no CORS)
   try {
-    // Proxy 1 (AllOrigins)
-    const url1 = `https://api.allorigins.win/get?url=${encodeURIComponent(inmetUrl)}`;
-    const response1 = await fetch(url1);
+    console.log("Tentando proxy interno de backend (/api/proxy-gov)...");
+    const response0 = await fetch('/api/proxy-gov');
+    const contentType = response0.headers.get('content-type');
     
-    if (response1.ok) {
-      const dataProxy = await response1.json();
-      if (dataProxy && dataProxy.contents) {
-        try {
-          inmetData = JSON.parse(dataProxy.contents);
-        } catch (parseError) {
-          console.warn("[Proxy 1] Falha no parse do JSON do INMET (HTML de erro?):", dataProxy.contents.substring(0, 100));
-        }
-      }
+    if (response0.ok && contentType && contentType.includes('application/json')) {
+      inmetData = await response0.json();
     } else {
-      console.warn(`[Proxy 1] Status HTTP: ${response1.status}`);
+      console.warn(`[Proxy Interno] Falha. HTTP Status: ${response0.status}. Content-Type: ${contentType}`);
     }
   } catch (error) {
-    console.warn("Erro no Proxy 1 (AllOrigins):", error);
+    console.warn("Erro no Proxy Interno (/api/proxy-gov):", error);
   }
 
-  // Proxy 2 Fallback (corsproxy.io)
+  // Strategy 2: Proxy 1 (AllOrigins)
+  if (!inmetData) {
+    try {
+      console.log("Tentando proxy 1 (AllOrigins)...");
+      const url1 = `https://api.allorigins.win/get?url=${encodeURIComponent(inmetUrl)}`;
+      const response1 = await fetch(url1);
+      
+      const contentType = response1.headers.get('content-type');
+      if (response1.ok && contentType && contentType.includes('application/json')) {
+        const dataProxy = await response1.json();
+        if (dataProxy && dataProxy.contents) {
+          try {
+            inmetData = JSON.parse(dataProxy.contents);
+          } catch (parseError) {
+            console.warn("[Proxy 1] Erro ao parsear JSON do INMET (Pode ser um HTML de erro do AllOrigins):", String(dataProxy.contents).substring(0, 100));
+          }
+        }
+      } else {
+        console.warn(`[Proxy 1] Falha. HTTP Status: ${response1.status}. Content-Type: ${contentType}`);
+      }
+    } catch (error) {
+      console.warn("Erro no Proxy 1 (AllOrigins):", error);
+    }
+  }
+
+  // Strategy 3: Proxy 2 Fallback (corsproxy.io)
   if (!inmetData) {
     try {
       console.log("Tentando proxy secundário (corsproxy.io)...");
@@ -104,7 +123,7 @@ export async function fetchGovAlerts(): Promise<ExternalAlert[]> {
       if (response2.ok && contentType && contentType.includes("application/json")) {
          inmetData = await response2.json();
       } else {
-         console.warn(`[Proxy 2] Resposta inválida ou não-JSON. Tipo: ${contentType}`);
+         console.warn(`[Proxy 2] Falha. Status: ${response2.status}. Tipo: ${contentType}`);
       }
     } catch (e) {
       console.warn("Erro no Proxy 2 (corsproxy.io):", e);

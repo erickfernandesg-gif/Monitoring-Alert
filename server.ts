@@ -19,6 +19,26 @@ app.get("/api/health", (req, res) => {
 });
 
 // A route that can be hit by Vercel Cron, or manually triggered
+app.get("/api/proxy-gov", async (req, res) => {
+  try {
+    const inmetResponse = await fetch("https://apitempo.inmet.gov.br/alerta");
+    if (!inmetResponse.ok) {
+      return res.status(inmetResponse.status).json({ error: `Erro ${inmetResponse.status}: Servidor do INMET sobrecarregado ou indisponível` });
+    }
+    
+    const contentType = inmetResponse.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+      return res.status(502).json({ error: "Erro 502: Resposta do INMET não é um JSON válido" });
+    }
+    
+    const data = await inmetResponse.json();
+    res.json(data);
+  } catch (error: any) {
+    console.error("Internal Proxy Error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.post("/api/cron/process-alerts", async (req, res) => {
   const authHeader = req.headers.authorization;
   const cronSecret = process.env.CRON_SECRET;
