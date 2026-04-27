@@ -189,27 +189,25 @@ export default function Dashboard() {
                   AO VIVO
                 </span>
               </div>
-              <div className="flex-1 overflow-y-auto p-3 grid grid-cols-1 xl:grid-cols-2 gap-2 content-start">
+              <div className="flex-1 overflow-y-auto p-3 grid grid-cols-1 lg:grid-cols-2 gap-3 content-start">
                 {alerts.length === 0 ? (
-                  <div className="text-slate-500 text-sm text-center py-8 xl:col-span-2">Monitorando sistemas...</div>
+                  <div className="text-slate-500 text-sm text-center py-8 lg:col-span-2">Monitorando sistemas...</div>
                 ) : null}
                 {alerts.map((alert) => (
                   <div 
                     key={alert.externalId} 
-                    className={`bg-white border rounded-xl flex overflow-hidden cursor-pointer transition-all duration-200 group shadow-sm hover:shadow-md ${
+                    className={`bg-white p-3 rounded-lg shadow-sm border border-gray-100 flex flex-col justify-between h-full cursor-pointer transition-all duration-200 group hover:shadow-md ${
                       alert.severity === 'Crítica' 
-                        ? 'border-red-200 hover:border-red-300' 
+                        ? 'border-l-4 border-l-red-500 hover:border-red-300' 
                         : alert.severity === 'PREDICTIVE_WARNING'
-                          ? 'border-purple-200 hover:border-purple-300'
+                          ? 'border-l-4 border-l-purple-500 hover:border-purple-300'
                           : alert.severity === 'Alta' 
-                            ? 'border-orange-200 hover:border-orange-300' 
-                            : 'border-yellow-200 hover:border-yellow-300'
+                            ? 'border-l-4 border-l-orange-500 hover:border-orange-300' 
+                            : 'border-l-4 border-l-yellow-500 hover:border-yellow-300'
                     }`}
                     onClick={() => navigate(`/alert/${encodeURIComponent(alert.externalId)}`)}
                   >
-                    <div className={`w-1.5 flex-shrink-0 transition-transform group-hover:scale-y-110 ${alert.severity === 'Crítica' ? 'bg-red-500' : alert.severity === 'PREDICTIVE_WARNING' ? 'bg-purple-500' : alert.severity === 'Alta' ? 'bg-orange-500' : 'bg-yellow-500'}`}></div>
-                    <div className="p-3 flex-1 flex flex-col justify-between min-w-0">
-                      <div className="flex justify-between items-center mb-1 gap-2">
+                    <div className="flex justify-between items-center mb-1 gap-2">
                         <div className="flex items-center gap-1.5 min-w-0">
                           {alert.disasterType.toLowerCase().includes('enchente') ? (
                             <Waves size={14} className={`flex-shrink-0 ${alert.severity === 'Crítica' ? 'text-red-600' : alert.severity === 'PREDICTIVE_WARNING' ? 'text-purple-600' : alert.severity === 'Alta' ? 'text-orange-600' : 'text-yellow-600'}`} />
@@ -223,11 +221,11 @@ export default function Dashboard() {
                         <span className="text-[10px] font-medium text-slate-400 whitespace-nowrap flex-shrink-0">
                           {safeFormatDistanceToNow(alert.issuedAt)}
                         </span>
-                      </div>
-                      <div className="text-xs text-slate-600 mb-2 truncate">{alert.description}</div>
-                      <div className="flex items-center gap-1.5 text-[10px]">
+                    </div>
+                    <div className="text-xs text-slate-600 mb-2 line-clamp-2">{alert.description}</div>
+                    <div className="flex items-center gap-1.5 text-[10px] mt-auto">
                         {(alert.severity === 'Alta' || alert.severity === 'Crítica' || alert.severity === 'PREDICTIVE_WARNING') && (
-                          <span className={`px-1.5 py-0.5 rounded font-semibold flex-shrink-0 ${
+                          <span className={`px-1.5 py-0.5 rounded font-bold flex-shrink-0 ${
                              alert.severity === 'Crítica' ? 'bg-red-100 text-red-700' : 
                              alert.severity === 'PREDICTIVE_WARNING' ? 'bg-purple-100 text-purple-700' :
                              'bg-orange-100 text-orange-700'
@@ -242,7 +240,6 @@ export default function Dashboard() {
                         <span className="ml-auto font-bold tracking-wider uppercase text-slate-400 flex-shrink-0">
                           {alert.source}
                         </span>
-                      </div>
                     </div>
                   </div>
                 ))}

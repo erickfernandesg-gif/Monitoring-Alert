@@ -101,7 +101,7 @@ export async function fetchGovAlerts(): Promise<ExternalAlert[]> {
 
 async function fetchInmetAlerts(): Promise<ExternalAlert[]> {
   const alerts: ExternalAlert[] = [];
-  const inmetUrl = 'https://apitempo.inmet.gov.br/alerta';
+  const inmetUrl = 'https://apiprevmet3.inmet.gov.br/avisos/ativos';
 
   try {
     const response = await fetch(getProxyUrl(inmetUrl));
